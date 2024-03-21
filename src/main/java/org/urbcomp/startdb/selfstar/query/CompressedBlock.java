@@ -1,6 +1,8 @@
 package org.urbcomp.startdb.selfstar.query;
 
 
+import org.urbcomp.startdb.selfstar.utils.OutputBitStream;
+
 import java.util.Date;
 
 public class CompressedBlock {
@@ -46,13 +48,16 @@ public class CompressedBlock {
         return iData;
     }
     public void resetIData(int dataIndex){iData = dataIndex;}
+
+    //[]
     public void writeData(byte[] writtenBits,int writtenBitsSize, int currentBitIndex){
         int writtenByteIndex = writtenBitsSize / 8;
         int writtenBitIndex = writtenBitsSize % 8;
         int DataByteIndex = currentBitIndex / 8;
         int DataBitIndex = currentBitIndex % 8;
 
-        for (int i = 0; i < writtenByteIndex ; i++){
+        int writtenByteSize = (writtenBitIndex == 0) ? writtenByteIndex : writtenByteIndex+1;
+        for (int i = 0; i < writtenByteSize ; i++){
             byte writtenByte = writtenBits[i];
             int bitsToWrittenInByte = (i == writtenByteIndex) ? writtenBitIndex : 8;
             for (int j = 0; j < bitsToWrittenInByte; j++){

@@ -3,6 +3,8 @@ package org.urbcomp.startdb.selfstar.query;
 
 import org.urbcomp.startdb.selfstar.compressor.ICompressor;
 import org.urbcomp.startdb.selfstar.decompressor.IDecompressor;
+import org.urbcomp.startdb.selfstar.utils.OutputBitStream;
+import java.util.Arrays;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -11,13 +13,21 @@ public class CompressAndQuery {
     private ICompressor compressor;
     private String fileName;
     private  List<CompressedBlock> compressedBlocks;
+    private OutputBitStream os;
 
     public CompressAndQuery(ICompressor compressor,String filename){
+        this(compressor,filename,1000); //The default window size of OutputBitStream is 1000
+    }
+
+    public CompressAndQuery(ICompressor compressor,String filename,int osWindows){
         this.compressor = compressor;
         this.fileName = filename;
         compressedBlocks = new ArrayList<>();
+        os = new OutputBitStream(
+                new byte[(int) (((osWindows + 1) * 8 + osWindows / 8 + 1) * 1.2)]);
         Chunk();
     }
+
     public void Chunk(){
         int currentDataIndex = 0;  //current index in data flow
         int currentBlockIndex = -1;
@@ -28,12 +38,15 @@ public class CompressAndQuery {
             boolean blockIfFull = true; //if current block is full
             while ((floatings = br.nextBlock()) != null){
                 for (Double floating : floatings) {
+
                     long beforeAddValueBits = compressor.getCompressedSizeInBits();
                     compressor.addValue(floating);
                     long afterAddValueBits = compressor.getCompressedSizeInBits();
+                    System.out.println("beforeAddValueBits:"+beforeAddValueBits+"  "+"afterAddValueBits:"+afterAddValueBits);
                     byte[] writtenBits = compressor.getBytes((int)beforeAddValueBits,(int)afterAddValueBits);   //writtenBits = buffer[beforeAddValueBits,afterAddValueBits)
                     int writtenBitsSize = (int)(afterAddValueBits-beforeAddValueBits);
-
+                    System.out.println("CompressedSizeInBits:"+compressor.getCompressedSizeInBits()+"  "+"writtenBitSize:"+writtenBitsSize+"  "+"writtenBits:"+Arrays.toString(writtenBits));
+                    System.out.println("compress.buffer:"+Arrays.toString(compressor.getBytes()));
                     //If block is full || If remaining space has some space/bits but not enough
                     if(blockIfFull || writtenBitsSize > compressedBlocks.get(compressedBlocks.size()-1).getRemainingSize()){
                         currentBlockIndex++;
@@ -68,6 +81,7 @@ public class CompressAndQuery {
                             blockIfFull = true;
                         }
                     }
+                    System.out.println("Blocksss.buffer:"+Arrays.toString(compressedBlocks.get(currentBlockIndex).getData()));
 
                     currentDataIndex++;
                 }
@@ -83,6 +97,7 @@ public class CompressAndQuery {
             if (compressedBlocks.get(i).getIData() > index){
                 decompressor.setBytes(compressedBlocks.get(i-1).getData());
                 List<Double> deValues = decompressor.decompress();
+                //System.out.println(deValues);
                 return deValues.get(index - compressedBlocks.get(i-1).getIData());
             }
         }
