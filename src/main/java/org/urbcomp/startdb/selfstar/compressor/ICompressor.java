@@ -5,6 +5,8 @@ public interface ICompressor {
 
     byte[] getBytes();
 
+    byte[] getBytes(int start, int end);
+
     void close();
 
     double getCompressionRatio();
