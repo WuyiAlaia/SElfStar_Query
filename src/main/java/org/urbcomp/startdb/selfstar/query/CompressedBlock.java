@@ -4,27 +4,25 @@ package org.urbcomp.startdb.selfstar.query;
 import org.urbcomp.startdb.selfstar.utils.OutputBitStream;
 
 import java.util.Date;
+import java.util.Arrays;
 
 public class CompressedBlock {
-
     //metadata
+    private final int iBlock;
+    private  int DataNumber;
+    private int iData;
     private double minValue;
     private double maxValue;
-    //    private double firstOriginalValue;
-    private  int iData; //current index in data flow
-    private int remainingSize;
+    private  long writtenBitSize;
     private byte[] data;
 
-    public CompressedBlock(){
-        this(1024);
-    }
-    public CompressedBlock(final int dataSize){
+    public CompressedBlock(final int BlockIndex, final int datasize){
+        iBlock = BlockIndex;
         maxValue = Double.MIN_VALUE;
         minValue = Double.MAX_VALUE;
-//        firstOriginalValue = 0;
-        iData = 0;
-        remainingSize = dataSize;
-        data = new byte[dataSize];
+        DataNumber = 0;
+        writtenBitSize = 0;
+        data = new byte[datasize];
     }
 
     public double getMinValue() {
@@ -36,30 +34,28 @@ public class CompressedBlock {
         return maxValue;
     }
     public void resetMaxValue(Double value){maxValue = value;}
-    public int getRemainingSize(){
-        return remainingSize;
+    public long getWrittenBitSize(){
+        return writtenBitSize;
     }
-    public void resetRemainingSize(int newRemainingSize){remainingSize = newRemainingSize;}
-    //    public double getFirstOriginalValue() {
-//        return firstOriginalValue;
-//    }
-//    public void resetFirstOriginalValue(Double value){firstOriginalValue = value;}
-    public int getIData(){
-        return iData;
+    public void resetWrittenBitSize(long size) { writtenBitSize = size;}
+    public int getDataNumber(){
+        return DataNumber;
     }
+    public void resetDataNumber(int datanumber){DataNumber = datanumber;}
+    public int getIData() {return iData;}
     public void resetIData(int dataIndex){iData = dataIndex;}
 
-    //[]
-    public void writeData(byte[] writtenBits,int writtenBitsSize, int currentBitIndex){
-        int writtenByteIndex = writtenBitsSize / 8;
-        int writtenBitIndex = writtenBitsSize % 8;
+
+    public void writeData(byte[] writtenBits,long writtenBitsSize, int currentBitIndex){
+        long writtenByteIndex = writtenBitsSize / 8;
+        long writtenBitIndex = writtenBitsSize % 8;
         int DataByteIndex = currentBitIndex / 8;
         int DataBitIndex = currentBitIndex % 8;
 
-        int writtenByteSize = (writtenBitIndex == 0) ? writtenByteIndex : writtenByteIndex+1;
+        long writtenByteSize = (writtenBitIndex == 0) ? writtenByteIndex : writtenByteIndex+1;
         for (int i = 0; i < writtenByteSize ; i++){
             byte writtenByte = writtenBits[i];
-            int bitsToWrittenInByte = (i == writtenByteIndex) ? writtenBitIndex : 8;
+            long bitsToWrittenInByte = (i == writtenByteIndex) ? writtenBitIndex : 8;
             for (int j = 0; j < bitsToWrittenInByte; j++){
                 int bit = (writtenByte >> (7 - j)) & 1;
                 data[DataByteIndex] |= bit << (7 - DataBitIndex);
@@ -72,7 +68,26 @@ public class CompressedBlock {
         }
     }
 
+    public void writeData(byte[] writtenBits, long writtenBitsSize){
+        int writtenByteSize = (int) writtenBitsSize / 8;
+        int lastBitSize = (int) writtenBitsSize % 8;
+        for (int i = 0; i < writtenByteSize; i++){
+            data[i] = writtenBits[i];
+        }
+
+        byte b = writtenBits[writtenByteSize];
+        for (int i = 0; i < lastBitSize; i++){
+            int bit = (b >> (7-i)) & 1;
+            data[writtenByteSize] |= bit << (7 - lastBitSize);
+        }
+    }
+
     public byte[] getData(){
-        return data;
+        if (writtenBitSize % 8 == 0){
+            return Arrays.copyOfRange(data, 0, (int)writtenBitSize / 8);
+        }
+        else{
+            return Arrays.copyOfRange(data, 0, (int)writtenBitSize / 8 + 1);
+        }
     }
 }

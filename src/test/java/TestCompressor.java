@@ -16,6 +16,7 @@ import org.urbcomp.startdb.selfstar.compressor.*;
 import org.urbcomp.startdb.selfstar.compressor.xor.*;
 import org.urbcomp.startdb.selfstar.decompressor.*;
 import org.urbcomp.startdb.selfstar.decompressor.xor.*;
+import org.urbcomp.startdb.selfstar.compressor.xor.ElfStarCompressor;
 
 import java.io.*;
 import java.nio.ByteBuffer;

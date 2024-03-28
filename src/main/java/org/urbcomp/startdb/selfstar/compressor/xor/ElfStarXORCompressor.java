@@ -165,4 +165,5 @@ public class ElfStarXORCompressor implements IXORCompressor {
         this.leadDistribution = leadDistribution;
         this.trailDistribution = trailDistribution;
     }
+
 }

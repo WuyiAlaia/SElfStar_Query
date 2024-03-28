@@ -169,5 +169,4 @@ public class ChimpNXORCompressor implements IXORCompressor {
         indices[key] = index;
         return thisSize;
     }
-
 }

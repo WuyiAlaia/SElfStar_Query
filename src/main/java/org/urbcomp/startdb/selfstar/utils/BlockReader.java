@@ -1,4 +1,4 @@
-package org.urbcomp.startdb.selfstar.query;
+package org.urbcomp.startdb.selfstar.utils;
 
 import java.io.*;
 import java.util.ArrayList;

@@ -137,4 +137,5 @@ public class ChimpXORCompressor implements IXORCompressor {
         storedVal = 0;
         first = true;
     }
+
 }

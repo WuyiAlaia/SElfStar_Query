@@ -161,4 +161,5 @@ public class ElfStarXORCompressorNoFRPruning implements IXORCompressor {
         this.leadDistribution = leadDistribution;
         this.trailDistribution = trailDistribution;
     }
+
 }

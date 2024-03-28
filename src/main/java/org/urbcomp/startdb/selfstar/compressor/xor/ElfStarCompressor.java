@@ -1,5 +1,6 @@
-package org.urbcomp.startdb.selfstar.compressor;
+package org.urbcomp.startdb.selfstar.compressor.xor;
 
+import org.urbcomp.startdb.selfstar.compressor.ICompressor;
 import org.urbcomp.startdb.selfstar.compressor.xor.IXORCompressor;
 import org.urbcomp.startdb.selfstar.utils.Elf64Utils;
 import org.urbcomp.startdb.selfstar.utils.OutputBitStream;
