@@ -22,6 +22,7 @@ public class CompressedBlock {
         minValue = Double.MAX_VALUE;
         DataNumber = 0;
         writtenBitSize = 0;
+        iData = 0;
         data = new byte[datasize];
     }
 
@@ -44,6 +45,7 @@ public class CompressedBlock {
     public void resetDataNumber(int datanumber){DataNumber = datanumber;}
     public int getIData() {return iData;}
     public void resetIData(int dataIndex){iData = dataIndex;}
+    public int getIBlock() {return iBlock;}
 
 
     public void writeData(byte[] writtenBits,long writtenBitsSize, int currentBitIndex){

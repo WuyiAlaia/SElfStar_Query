@@ -3,24 +3,25 @@ package org.urbcomp.startdb.selfstar.compressor.query;
 import org.urbcomp.startdb.selfstar.compressor.ICompressor;
 import org.urbcomp.startdb.selfstar.utils.BlockReader;
 import org.urbcomp.startdb.selfstar.query.CompressedBlock;
+import org.urbcomp.startdb.selfstar.query.BTree;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class QueryCompressor implements IQueryCompressor{
+public class BTreeQueryCompressor implements IQueryCompressor{
     private ICompressor compressor;
     private String fileName;
-    private List<CompressedBlock> compressedBlocks;
+    private BTree compressedBlocksTree;
     private int blockDataCapacity;
 
-    public QueryCompressor(ICompressor compressor, String filename){
+    public BTreeQueryCompressor(ICompressor compressor, String filename){
         this(compressor,filename,1024);
     }
 
-    public QueryCompressor(ICompressor compressor, String filename, int blockdatabitsize){
+    public BTreeQueryCompressor(ICompressor compressor, String filename, int blockdatabitsize){
         this.compressor = compressor;
         this.fileName = filename;
-        compressedBlocks = new ArrayList<>();
+        compressedBlocksTree = new BTree(5);
         this.blockDataCapacity = blockdatabitsize;
         Chunk();
     }
@@ -30,6 +31,7 @@ public class QueryCompressor implements IQueryCompressor{
         int currentDataNumber = 0;
         int currentBlockIndex = -1;
         long currentBitSize = 0;
+        CompressedBlock newCompressedBlock = null;
         try (BlockReader br = new BlockReader(fileName,1000)){
             List<Double> floatings;
             boolean blockIfFull = true;
@@ -42,32 +44,31 @@ public class QueryCompressor implements IQueryCompressor{
                     currentBitSize = compressor.getCompressedSizeInBits();
                     if (blockIfFull || currentBitSize > blockDataCapacity){
                         //write data into current CompressedBlock
-                        currentDataNumber--;
                         if (currentBlockIndex != -1) {
                             //write data[] and WrittenBitSize
-                            compressedBlocks.get(currentBlockIndex).writeData(compressor.getBytes(),beforeAddValueBitsSize);
-                            compressedBlocks.get(currentBlockIndex).resetWrittenBitSize(beforeAddValueBitsSize);
-                            compressedBlocks.get(currentBlockIndex).resetDataNumber(currentDataNumber);
+                            newCompressedBlock.writeData(compressor.getBytes(),beforeAddValueBitsSize);
+                            newCompressedBlock.resetWrittenBitSize(beforeAddValueBitsSize);
+                            newCompressedBlock.resetDataNumber(currentDataNumber);
                             currentDataNumber = 0;
+                            compressedBlocksTree.insert(newCompressedBlock);
                         }
 
                         //add a new CompressedBlock
                         currentBlockIndex++;
-                        currentDataNumber++;
-                        compressedBlocks.add(new CompressedBlock(currentBlockIndex,blockDataCapacity / 8 + 1));
-                        compressedBlocks.get(currentBlockIndex).resetIData(currentDataIndex);
-                        compressedBlocks.get(currentBlockIndex).resetMaxValue(floating);
-                        compressedBlocks.get(currentBlockIndex).resetMinValue(floating);
+                        newCompressedBlock = new CompressedBlock(currentBlockIndex,blockDataCapacity / 8 + 1);
+                        newCompressedBlock.resetIData(currentDataIndex);
+                        newCompressedBlock.resetMaxValue(floating);
+                        newCompressedBlock.resetMinValue(floating);
                         compressor.refresh();
                         compressor.addValue(floating);
                         blockIfFull = false;
                     }
                     else {
-                        if(floating > compressedBlocks.get(currentBlockIndex).getMaxValue()){
-                            compressedBlocks.get(currentBlockIndex).resetMaxValue(floating);
+                        if(floating > newCompressedBlock.getMaxValue()){
+                            newCompressedBlock.resetMaxValue(floating);
                         }
-                        else if(floating < compressedBlocks.get(currentBlockIndex).getMinValue()){
-                            compressedBlocks.get(currentBlockIndex).resetMinValue(floating);
+                        else if(floating < newCompressedBlock.getMinValue()){
+                            newCompressedBlock.resetMinValue(floating);
                         }
 
                         if(currentBitSize == blockDataCapacity){
@@ -83,7 +84,7 @@ public class QueryCompressor implements IQueryCompressor{
         }
     }
 
-    public List<CompressedBlock> getCompressedBlocks(){
-        return this.compressedBlocks;
+    public BTree getCompressedBlocksBTree(){
+        return this.compressedBlocksTree;
     }
 }
