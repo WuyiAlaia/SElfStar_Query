@@ -44,6 +44,7 @@ public class BTreeQueryCompressor implements IQueryCompressor{
                     currentBitSize = compressor.getCompressedSizeInBits();
                     if (blockIfFull || currentBitSize > blockDataCapacity){
                         //write data into current CompressedBlock
+                        currentDataNumber--;
                         if (currentBlockIndex != -1) {
                             //write data[] and WrittenBitSize
                             newCompressedBlock.writeData(compressor.getBytes(),beforeAddValueBitsSize);
@@ -55,6 +56,7 @@ public class BTreeQueryCompressor implements IQueryCompressor{
 
                         //add a new CompressedBlock
                         currentBlockIndex++;
+                        currentDataNumber++;
                         newCompressedBlock = new CompressedBlock(currentBlockIndex,blockDataCapacity / 8 + 1);
                         newCompressedBlock.resetIData(currentDataIndex);
                         newCompressedBlock.resetMaxValue(floating);
@@ -79,6 +81,14 @@ public class BTreeQueryCompressor implements IQueryCompressor{
                     currentDataIndex++;
                 }
             }
+            // write into the last part
+            long beforeAddValueBitsSize = compressor.getCompressedSizeInBits();
+            compressor.addValue(88.8888888888);
+            newCompressedBlock.writeData(compressor.getBytes(),beforeAddValueBitsSize);
+            newCompressedBlock.resetWrittenBitSize(beforeAddValueBitsSize);
+            newCompressedBlock.resetDataNumber(currentDataNumber);
+            compressedBlocksTree.insert(newCompressedBlock);
+
         }catch (Exception e) {
             throw new RuntimeException(fileName, e);
         }

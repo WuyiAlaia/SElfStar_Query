@@ -80,7 +80,7 @@ public class CompressedBlock {
         byte b = writtenBits[writtenByteSize];
         for (int i = 0; i < lastBitSize; i++){
             int bit = (b >> (7-i)) & 1;
-            data[writtenByteSize] |= bit << (7 - lastBitSize);
+            data[writtenByteSize] |= bit << (7 - i);
         }
     }
 

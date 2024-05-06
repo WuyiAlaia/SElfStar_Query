@@ -37,11 +37,11 @@ public class BTreeNode {
             if(dataindex >= blocks.get(i).getIData() && dataindex < blocks.get(i).getIData() + blocks.get(i).getDataNumber() ) {
                 return blocks.get(i);
             }
-            else if (dataindex >= blocks.get(i).getIData() + blocks.get(i).getDataNumber() && dataindex < blocks.get(i+1).getIData() && i < blocks.size()-1){
+            else if (dataindex >= blocks.get(i).getIData() + blocks.get(i).getDataNumber() && i == blocks.size()-1){
                 return children.get(i+1).findwithDataIndex(dataindex);
             }
-            else if (dataindex >= blocks.get(i).getIData() + blocks.get(i).getDataNumber() && i == blocks.size()-1){
-                    return children.get(i+1).findwithDataIndex(dataindex);
+            else if (dataindex >= blocks.get(i).getIData() + blocks.get(i).getDataNumber() && dataindex < blocks.get(i+1).getIData() && i < blocks.size()-1){
+                return children.get(i+1).findwithDataIndex(dataindex);
             }
         }
         return null;

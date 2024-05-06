@@ -148,8 +148,6 @@ public class QueryDecompressor implements IQueryDecompressor{
     }
 
     public Double MaxValueFromiToEnd(int fromIndex, int BlockIndex){
-        List<Double> floatings = readfile("Air-pressure.csv");
-
         decompressor.refresh();
         decompressor.setBytes(compressedBlocks.get(BlockIndex).getData());
         fromIndex -= compressedBlocks.get(BlockIndex).getIData();
@@ -157,10 +155,6 @@ public class QueryDecompressor implements IQueryDecompressor{
         Double value;
         for (int i = 0; i < fromIndex; i ++){
             value = decompressor.nextValue();
-            Double v = floatings.get(i + compressedBlocks.get(BlockIndex).getIData());
-            if(value != v){
-                System.out.println("error");
-            }
         }
         int valuesNumber = compressedBlocks.get(BlockIndex+1).getIData() - compressedBlocks.get(BlockIndex).getIData();
         for (int i = fromIndex; i < valuesNumber; i++){

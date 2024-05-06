@@ -105,8 +105,6 @@ public class BTreeQueryDecompressor implements IQueryDecompressor{
     }
 
     public Double MaxValueFromiToEnd(int fromIndex, CompressedBlock block){
-        List<Double> floatings = readfile("Air-pressure.csv");
-
         decompressor.refresh();
         decompressor.setBytes(block.getData());
         fromIndex -= block.getIData();
@@ -114,10 +112,6 @@ public class BTreeQueryDecompressor implements IQueryDecompressor{
         Double value;
         for (int i = 0; i < fromIndex; i ++){
             value = decompressor.nextValue();
-            Double v = floatings.get(i + block.getIData());
-            if(value != v){
-                System.out.println("error");
-            }
         }
         int valuesNumber = block.getDataNumber();
         for (int i = fromIndex; i < valuesNumber; i++){

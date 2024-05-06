@@ -70,6 +70,9 @@ public class SElfStarXORDecompressor implements IXORDecompressor {
 
     @Override
     public void refresh() {
+        storedLeadingZeros = Integer.MAX_VALUE;
+        storedTrailingZeros = Integer.MAX_VALUE;
+        storedVal = 0;
         first = true;
         endOfStream = false;
     }
@@ -94,10 +97,8 @@ public class SElfStarXORDecompressor implements IXORDecompressor {
 
     private void next() throws IOException {
         if (first) {
-            if (in.readBit() == 1) {
-                initLeadingRepresentation();
-                initTrailingRepresentation();
-            }
+            initLeadingRepresentation();
+            initTrailingRepresentation();
             first = false;
             int trailingZeros = in.readInt(7);
             if (trailingZeros < 64) {

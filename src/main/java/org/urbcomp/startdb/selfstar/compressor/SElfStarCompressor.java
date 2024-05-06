@@ -17,7 +17,6 @@ public class SElfStarCompressor implements ICompressor {
 
     private int numberOfValues = 0;
 
-    private double storeCompressionRatio = 0;
 
     public SElfStarCompressor(IXORCompressor xorCompressor) {
         this.xorCompressor = xorCompressor;
@@ -104,11 +103,8 @@ public class SElfStarCompressor implements ICompressor {
     }
 
     public void close() {
-        double thisCompressionRatio = compressedSizeInBits / (numberOfValues * 64.0);
-        if (storeCompressionRatio < thisCompressionRatio) {
-            xorCompressor.setDistribution(null, null);
-        }
-        storeCompressionRatio = thisCompressionRatio;
+
+        xorCompressor.setDistribution(null, null);
 
         // we write one more bit here, for marking an end of the stream.
         compressedSizeInBits += os.writeInt(2, 2);  // case 10

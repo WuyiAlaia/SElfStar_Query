@@ -78,6 +78,13 @@ public class QueryCompressor implements IQueryCompressor{
                     currentDataIndex++;
                 }
             }
+            // write into the last part
+            long beforeAddValueBitsSize = compressor.getCompressedSizeInBits();
+            compressor.addValue(88.88888888) ; //解决最后的byte为写满的问题
+            compressedBlocks.get(currentBlockIndex).writeData(compressor.getBytes(),beforeAddValueBitsSize);
+            compressedBlocks.get(currentBlockIndex).resetWrittenBitSize(beforeAddValueBitsSize);
+            compressedBlocks.get(currentBlockIndex).resetDataNumber(currentDataNumber);
+
         }catch (Exception e) {
             throw new RuntimeException(fileName, e);
         }
