@@ -13,6 +13,7 @@ public class BTreeQueryDecompressor implements IQueryDecompressor{
     private final IDecompressor decompressor;
     private final BTree compressedBlocksTree;
 
+
     public BTreeQueryDecompressor(IDecompressor decompressor, BTree compressedBlocksTree) {
         this.decompressor = decompressor;
         this.compressedBlocksTree = compressedBlocksTree;
@@ -34,6 +35,39 @@ public class BTreeQueryDecompressor implements IQueryDecompressor{
 
     public Double RandomQuery(int index){
         return RandomQueryInBlock(index,compressedBlocksTree.findWithDataIndex(index));
+    }
+
+    public List<Integer> RangeQuery(double f){
+        List<Integer> result = new ArrayList<>();
+        List<CompressedBlock> resultBlocks = compressedBlocksTree.traversal(f);
+        for (CompressedBlock block : resultBlocks){
+            decompressor.refresh();
+            decompressor.setBytes(block.getData());
+            List<Double> floatings = decompress(block.getDataNumber());
+            int indexOfFirstData = block.getIData();
+            for (int i=0; i < block.getDataNumber(); i++){
+                if (Double.toString(f).equals(Double.toString(floatings.get(i)))){
+                    result.add(i + indexOfFirstData);
+                }
+            }
+
+        }
+
+
+//        for (CompressedBlock block : compressedBlocks){
+//            if (f <= block.getMaxValue() && f >= block.getMinValue()){
+//                decompressor.refresh();
+//                decompressor.setBytes(block.getData());
+//                List<Double> floatings = decompress(block.getDataNumber());
+//                int indexOfFirstData = block.getIData();
+//                for (int i=0; i < block.getDataNumber(); i++){
+//                    if (Double.toString(f).equals(Double.toString(floatings.get(i)))){
+//                        result.add(i + indexOfFirstData);
+//                    }
+//                }
+//            }
+//        }
+        return result;
     }
 
     public Double MaxQuery(int start, int end){

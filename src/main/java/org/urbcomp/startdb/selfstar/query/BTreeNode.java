@@ -92,4 +92,28 @@ public class BTreeNode {
         }
     }
 
+    public void traversal(List<CompressedBlock> resultBlocks, double f){
+        if (!leaf){
+            for (int i = 0; i < children.size(); i++){
+                children.get(i).traversal(resultBlocks,f);
+                if (i < blocks.size()){
+                    if (f <= blocks.get(i).getMaxValue() && f >= blocks.get(i).getMinValue()){
+                        resultBlocks.add(blocks.get(i));
+                    }
+                }
+            }
+        }
+        else {
+            for (CompressedBlock block:blocks){
+                if (f <= block.getMaxValue() && f >= block.getMinValue()){
+                    resultBlocks.add(block);
+                }
+            }
+        }
+    }
+
+    public boolean isLeaf(){ return leaf;}
+    public List<BTreeNode> getChildren() { return  children;}
+    public List<CompressedBlock> getBlocks() { return blocks;}
+
 }

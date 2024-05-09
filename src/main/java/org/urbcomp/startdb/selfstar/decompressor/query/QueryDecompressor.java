@@ -128,6 +128,24 @@ public class QueryDecompressor implements IQueryDecompressor{
     }
 
 
+    public List<Integer> RangeQuery(double f){
+        List<Integer> result = new ArrayList<>();
+        for (CompressedBlock block : compressedBlocks){
+            if (f <= block.getMaxValue() && f >= block.getMinValue()){
+                decompressor.refresh();
+                decompressor.setBytes(block.getData());
+                List<Double> floatings = decompress(block.getDataNumber());
+                int indexOfFirstData = block.getIData();
+                for (int i=0; i < block.getDataNumber(); i++){
+                    if (Double.toString(f).equals(Double.toString(floatings.get(i)))){
+                        result.add(i + indexOfFirstData);
+                    }
+                }
+            }
+        }
+        return result;
+    }
+
 
     public Double RandomQueryInBlock(int DataIndex,int BlockIndex){
         decompressor.refresh();

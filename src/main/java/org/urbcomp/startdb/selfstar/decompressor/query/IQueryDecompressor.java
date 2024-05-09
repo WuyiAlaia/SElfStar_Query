@@ -6,4 +6,6 @@ public interface IQueryDecompressor {
     List<Double> decompress(int valuesNumber);
     Double RandomQuery (int index);
 
+    List<Integer> RangeQuery (double f);
+
 }

@@ -1,5 +1,8 @@
 package org.urbcomp.startdb.selfstar.query;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class BTree {
     private BTreeNode root;
     private int degree;
@@ -32,6 +35,14 @@ public class BTree {
         root.insertNonFull(block);
     }
 
+    public List<CompressedBlock> traversal(double f){
+        List<CompressedBlock> resultBlocks = new ArrayList<>();
+        root.traversal(resultBlocks,f);
+        return resultBlocks;
+    }
+
+
     public int getTreeNodeNumber(){return TreeNodeNumber;}
+
 
 }
