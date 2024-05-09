@@ -11,6 +11,7 @@ import org.urbcomp.startdb.selfstar.decompressor.query.BTreeQueryDecompressor;
 import org.urbcomp.startdb.selfstar.decompressor.query.IQueryDecompressor;
 import org.urbcomp.startdb.selfstar.decompressor.query.QueryDecompressor;
 import org.urbcomp.startdb.selfstar.decompressor.xor.SElfStarXORDecompressor;
+import org.urbcomp.startdb.selfstar.query.CompressedBlock;
 
 
 import java.io.*;
@@ -34,7 +35,6 @@ public class TestQuery {
     private final Map<String, Long> fileNameChunkToCompressedBits = new HashMap<>();
     private final Map<String, Long> fileNameBTreeToCompressedBits = new HashMap<>();
     private final String[] fileNames = {
-            INIT_FILE,
             "Air-pressure.csv",
             "Air-sensor.csv",
             "Bird-migration.csv",
@@ -83,6 +83,7 @@ public class TestQuery {
             BTreeQueryCompressor btqc = new BTreeQueryCompressor(new SElfStarCompressor(new SElfXORCompressor()),filename);
             BTreeQueryDecompressor btqd = new BTreeQueryDecompressor(new ElfStarDecompressor(new SElfStarXORDecompressor()), btqc.getCompressedBlocksBTree());
 
+
             ifPassOfChunk = randomQueryIfRight(qd,filename);
             ifPassOfTree = randomQueryIfRight(btqd,filename);
         }
@@ -93,7 +94,7 @@ public class TestQuery {
 
     @Test
     public void testRandomQueryTimeConsumptionForAverage(){
-        int times = 2;
+        int times = 1;
         int queryNumber = 100;
         double queryRate = 0.0001;
         initQueryTimeMap();
@@ -162,7 +163,6 @@ public class TestQuery {
     }
 
     public void testRandomQueryTimeConsumption(double rate){
-//        List<String> bytesFiles = createFiles(100);
 
         double queryRate = rate;
         Random random = new Random();
@@ -178,9 +178,11 @@ public class TestQuery {
 
             //Baseline:Time of oi + Time of decompress + Time of query
             double decompressTime = 0;
-//            double oiTime = 0;
+            double oiTime = 0;
             ICompressor compressor = new SElfStarCompressor(new SElfXORCompressor());
             IDecompressor decompressor = new ElfStarDecompressor(new SElfStarXORDecompressor());
+            List<String> bytesFiles = createFiles(1);
+            refreshFiles(1);
             try (BlockReader br = new BlockReader(filename, BLOCK_SIZE)) {
                 List<Double> floatings;
                 while ((floatings = br.nextBlock()) != null) {
@@ -189,11 +191,11 @@ public class TestQuery {
                     }
                     floatings.forEach(compressor::addValue);
                     compressor.close();
-//                    refreshFiles(1);
-//                    writeBytesToFile(compressor.getBytes(),bytesFiles.get(0));
-//                    start = System.nanoTime();
-//                    decompressor.setBytes(readBytesFromFile(bytesFiles.get(0)));
-//                    oiTime += (System.nanoTime() - start) / TIME_PRECISION;
+                    writeBytesToFile(compressor.getBytes(),bytesFiles.get(0));
+
+                    start = System.nanoTime();
+                    decompressor.setBytes(readBytesFromFile(bytesFiles.get(0)));
+                    oiTime += (System.nanoTime() - start) / TIME_PRECISION;
 
                     start = System.nanoTime();
                     List<Double> devalues = decompressor.decompress();
@@ -208,26 +210,38 @@ public class TestQuery {
             for (int i:indexList){
                 values.get(i);
             }
-            double queryBaselineTime = (System.nanoTime() - start) / TIME_PRECISION + decompressTime;
+            double queryBaselineTime = (System.nanoTime() - start) / TIME_PRECISION + decompressTime + oiTime;
             fileNameBaselineToQueryTime.get(filename).add(queryBaselineTime);
 
             //Chunk
-            QueryCompressor qc = new QueryCompressor(new SElfStarCompressor(new SElfXORCompressor()),filename);
+            int blockDataCapacity = 2048;
+            QueryCompressor qc = new QueryCompressor(new SElfStarCompressor(new SElfXORCompressor()),filename,blockDataCapacity);
             QueryDecompressor qd = new QueryDecompressor(new ElfStarDecompressor(new SElfStarXORDecompressor()), qc.getCompressedBlocks());
+            bytesFiles = createFiles(qc.getCompressedBlocks().size());
+            refreshFiles(qc.getCompressedBlocks().size());
+            System.out.println(qc.getCompressedBlocks().size());
+            for (int i = 0; i < qc.getCompressedBlocks().size(); i++){
+                writeBytesToFile(qc.getCompressedBlocks().get(i).getData(),bytesFiles.get(i));
+            }
+            start = System.nanoTime();
+            for (int i = 0; i < qc.getCompressedBlocks().size();i++){
+                qd.setBytes(readBytesFromFile(bytesFiles.get(i)));
+            }
+            oiTime = (System.nanoTime() - start) / TIME_PRECISION;
 
             start = System.nanoTime();
             randomQueryTimeTest(qd,indexList);
             double queryChunkTime = (System.nanoTime() - start) / TIME_PRECISION;
-            fileNameChunkToQueryTime.get(filename).add(queryChunkTime);
+            fileNameChunkToQueryTime.get(filename).add(queryChunkTime + oiTime);
 
             // Chunk + BTree
-            BTreeQueryCompressor btqc = new BTreeQueryCompressor(new SElfStarCompressor(new SElfXORCompressor()),filename);
+            BTreeQueryCompressor btqc = new BTreeQueryCompressor(new SElfStarCompressor(new SElfXORCompressor()),filename,blockDataCapacity);
             BTreeQueryDecompressor btqd = new BTreeQueryDecompressor(new ElfStarDecompressor(new SElfStarXORDecompressor()), btqc.getCompressedBlocksBTree());
 
             start = System.nanoTime();
             randomQueryTimeTest(btqd,indexList);
             double queryBTreeTime = (System.nanoTime() - start) / TIME_PRECISION;
-            fileNameBTreeToQueryTime.get(filename).add(queryBTreeTime);
+            fileNameBTreeToQueryTime.get(filename).add(queryBTreeTime + oiTime);
         }
 
     }
@@ -551,11 +565,23 @@ public class TestQuery {
     }
 
 
-
+    @Test
+    public void testFile(){
+        byte[] bytes = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20};
+        refreshFiles(1);
+        writeBytesToFile(bytes,folderPath_Bytes+"fileBytes_1.txt");
+        byte[] bytes2 = {0,1,2,3};
+        writeBytesToFile(bytes2,folderPath_Bytes+"fileBytes_1.txt");
+        byte[] newB = readBytesFromFile(folderPath_Bytes+"fileBytes_1.txt");
+        for (byte b:newB){
+            System.out.println(b);
+        }
+    }
 
     // 将压缩块写入文件
+
     public void writeBytesToFile(byte[] data, String filePath) {
-        try (FileOutputStream fos = new FileOutputStream(filePath);
+        try (FileOutputStream fos = new FileOutputStream(filePath, true);
              ObjectOutputStream oos = new ObjectOutputStream(fos)) {
             oos.writeObject(data); // 将压缩块的数据写入文件
         } catch (IOException e) {
@@ -582,9 +608,10 @@ public class TestQuery {
             fileNameBTreeToQueryTime.put(filename,new ArrayList<>());
         }
     }
+
     private List<String> createFiles(int fileNumber){
         File folder = new File(folderPath_Bytes);
-        List<String> BytesFiles = new ArrayList<>();
+        List<String> bytesFiles = new ArrayList<>();
         if (!folder.exists()) {
             folder.mkdirs();
         }
@@ -593,17 +620,22 @@ public class TestQuery {
             String fileName = "fileBytes_" + i + ".txt";
             File file = new File(folderPath_Bytes + fileName);
             try {
-                if (file.createNewFile()) {
-                    BytesFiles.add(fileName);
+                if (file.exists()) {
+                    System.out.println("The file already exists: " + fileName);
+                    bytesFiles.add(fileName);
                 } else {
-                    System.out.println("The file already exists" + fileName);
+                    if (file.createNewFile()) {
+                        bytesFiles.add(fileName);
+                    } else {
+                        System.out.println("Fail to create the file: " + fileName);
+                    }
                 }
             } catch (IOException e) {
                 System.out.println("Fail to create the file:" + fileName);
                 e.printStackTrace();
             }
         }
-        return BytesFiles;
+        return bytesFiles;
 
     }
     private void refreshFiles(int fileNumber){
@@ -617,7 +649,6 @@ public class TestQuery {
                 writer.write("");
                 // 关闭文件写入流
                 writer.close();
-                System.out.println("文件内容已清空：" + fileName);
             } catch (IOException e) {
                 System.out.println("文件内容清空失败：" + fileName);
                 e.printStackTrace();
