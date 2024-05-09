@@ -1,6 +1,5 @@
 package org.urbcomp.startdb.selfstar.decompressor.query;
 
-import org.apache.jena.base.Sys;
 import org.urbcomp.startdb.selfstar.decompressor.IDecompressor;
 import org.urbcomp.startdb.selfstar.query.BTree;
 import org.urbcomp.startdb.selfstar.query.CompressedBlock;
@@ -8,12 +7,11 @@ import org.urbcomp.startdb.selfstar.utils.BlockReader;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Arrays;
 
 
 public class BTreeQueryDecompressor implements IQueryDecompressor{
-    private IDecompressor decompressor;
-    private BTree compressedBlocksTree;
+    private final IDecompressor decompressor;
+    private final BTree compressedBlocksTree;
 
     public BTreeQueryDecompressor(IDecompressor decompressor, BTree compressedBlocksTree) {
         this.decompressor = decompressor;

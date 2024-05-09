@@ -1,18 +1,16 @@
 package org.urbcomp.startdb.selfstar.decompressor.query;
 
-import org.apache.jena.base.Sys;
 import org.urbcomp.startdb.selfstar.decompressor.IDecompressor;
 import org.urbcomp.startdb.selfstar.query.CompressedBlock;
 import org.urbcomp.startdb.selfstar.utils.BlockReader;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Arrays;
 
 
 public class QueryDecompressor implements IQueryDecompressor{
-    private IDecompressor decompressor;
-    private List<CompressedBlock> compressedBlocks;
+    private final IDecompressor decompressor;
+    private final List<CompressedBlock> compressedBlocks;
 
     public QueryDecompressor(IDecompressor decompressor, List<CompressedBlock> compressedBlocks) {
         this.decompressor = decompressor;
@@ -135,14 +133,6 @@ public class QueryDecompressor implements IQueryDecompressor{
         decompressor.refresh();
         decompressor.setBytes(compressedBlocks.get(BlockIndex).getData());
         int indexinblock = DataIndex - compressedBlocks.get(BlockIndex).getIData();
-//        Double value;
-//        for (int i = 0; i < indexinblock ; i++){
-//            value = decompressor.nextValue();
-//            if (value == 1.0){
-//                System.out.println("o");
-//            }
-//        }
-//        return decompressor.nextValue();
         List<Double> floatings = decompress(indexinblock+1);
         return floatings.get(indexinblock);
     }

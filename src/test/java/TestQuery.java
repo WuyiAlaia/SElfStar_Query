@@ -1,3 +1,6 @@
+import com.github.Cwida.alp.ALPCompression;
+import com.github.Cwida.alp.ALPConstants;
+import com.github.Tranway.buff.BuffCompressor;
 import org.junit.jupiter.api.Test;
 import org.urbcomp.startdb.selfstar.compressor.ICompressor;
 import org.urbcomp.startdb.selfstar.compressor.SElfStarCompressor;
@@ -15,6 +18,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
+import java.util.function.DoubleToIntFunction;
 
 
 public class TestQuery {
@@ -23,9 +27,9 @@ public class TestQuery {
     private static final double TIME_PRECISION = 1000.0;
     private static final int BLOCK_SIZE = 1000;
     private static final String INIT_FILE = "init.csv";
-    private final Map<String,Double> fileNameBaselineToQueryTime = new HashMap<>();
-    private final Map<String, Double> fileNameChunkToQueryTime = new HashMap<>();
-    private final Map<String, Double> fileNameBTreeToQueryTime = new HashMap<>();
+    private final Map<String,List<Double>> fileNameBaselineToQueryTime = new HashMap<>();
+    private final Map<String, List<Double>> fileNameChunkToQueryTime = new HashMap<>();
+    private final Map<String, List<Double>> fileNameBTreeToQueryTime = new HashMap<>();
     private final String[] fileNames = {
             INIT_FILE,
             "Air-pressure.csv",
@@ -52,6 +56,26 @@ public class TestQuery {
             "electric_vehicle_charging.csv"
     };
 
+    private void initQueryTimeMap(){
+        for (String filename: fileNames){
+            fileNameBaselineToQueryTime.put(filename,new ArrayList<>());
+            fileNameChunkToQueryTime.put(filename,new ArrayList<>());
+            fileNameBTreeToQueryTime.put(filename,new ArrayList<>());
+        }
+    }
+    // 测试包括：1. 准确性：随机访问是否正确；最大值最小值查询是否正确；
+    //         2. 性能：查询时间比较；块前，块中，块末；压缩率比较
+
+
+    // 流式
+
+    // 挑战1：无法知道块能压多少数据 -> 退格
+    // 挑战2：解压全部花时间
+    // 挑战3： 数据在哪一块
+
+    // 先验知识：定长编码和变长编码
+
+    // 查询：随机访问；max/min[a,b];a->index;
     @Test
     public void testRandomQueryIfRight(){
         boolean ifPassOfChunk = false;
@@ -72,8 +96,113 @@ public class TestQuery {
     }
 
     @Test
-    public void testRandomQueryTimeConsumption(){
-        int queryNumber = 5000; // The number of random query in test
+    public void testRandomQueryTimeConsumptionForAverage(){
+        int times = 50;
+        int queryNumber = 100;
+        double queryRate = 0.0001;
+        initQueryTimeMap();
+        Map<String,Double> fileNameBaselineToQueryTimeAverage = new HashMap<>();
+        Map<String, Double> fileNameChunkToQueryTimeAverage = new HashMap<>();
+        Map<String, Double> fileNameBTreeToQueryTimeAverage = new HashMap<>();
+        while (times > 0){
+            testRandomQueryTimeConsumption(queryRate);
+            times--;
+        }
+        for (String filename : fileNames){
+
+        }
+    }
+
+
+    public void testRandomQueryTimeConsumption(double rate){
+        double queryRate = rate;
+        Random random = new Random();
+        double start;
+
+        for (String filename : fileNames){
+            List<Double> values = readfile(filename);
+            int numberOfData = values.size();
+            int queryNumber = (int) Math.ceil(queryRate * numberOfData);
+            List<Integer> indexList = new ArrayList<>();
+            for (int i=0; i < queryNumber; i++){
+                indexList.add(random.nextInt(numberOfData));
+            }
+
+            //Baseline: Time of decompress + Time of query
+            double decompressTime = 0;
+            ICompressor compressor = new SElfStarCompressor(new SElfXORCompressor());
+            IDecompressor decompressor = new ElfStarDecompressor(new SElfStarXORDecompressor());
+            try (BlockReader br = new BlockReader(filename, BLOCK_SIZE)) {
+                List<Double> floatings;
+                while ((floatings = br.nextBlock()) != null) {
+                    if (floatings.size() != BLOCK_SIZE) {
+                        break;
+                    }
+                    floatings.forEach(compressor::addValue);
+                    compressor.close();
+                    decompressor.setBytes(compressor.getBytes());
+                    start = System.nanoTime();
+                    List<Double> devalues = decompressor.decompress();
+                    decompressTime += (System.nanoTime() - start) / TIME_PRECISION;
+                    compressor.refresh();
+                    decompressor.refresh();
+                }
+            } catch (Exception e) {
+                throw new RuntimeException(filename, e);
+            }
+            start = System.nanoTime();
+            for (int i:indexList){
+                values.get(i);
+            }
+            double queryBaselineTime = (System.nanoTime() - start) / TIME_PRECISION + decompressTime;
+            fileNameBaselineToQueryTime.get(filename).add(queryBaselineTime);
+
+            //Chunk and Chunk+BTree
+            QueryCompressor qc = new QueryCompressor(new SElfStarCompressor(new SElfXORCompressor()),filename);
+            QueryDecompressor qd = new QueryDecompressor(new ElfStarDecompressor(new SElfStarXORDecompressor()), qc.getCompressedBlocks());
+
+            BTreeQueryCompressor btqc = new BTreeQueryCompressor(new SElfStarCompressor(new SElfXORCompressor()),filename);
+            BTreeQueryDecompressor btqd = new BTreeQueryDecompressor(new ElfStarDecompressor(new SElfStarXORDecompressor()), btqc.getCompressedBlocksBTree());
+
+            start = System.nanoTime();
+            randomQueryTimeTest(qd,indexList);
+            double queryChunkTime = (System.nanoTime() - start) / TIME_PRECISION;
+            fileNameChunkToQueryTime.get(filename).add(queryChunkTime);
+
+            start = System.nanoTime();
+            randomQueryTimeTest(btqd,indexList);
+            double queryBTreeTime = (System.nanoTime() - start) / TIME_PRECISION;
+            fileNameBTreeToQueryTime.get(filename).add(queryBTreeTime);
+        }
+
+        // write result
+        try {
+            File file = new File(STORE_FILE).getParentFile();
+            if (!file.exists() && !file.mkdirs()) {
+                throw new IOException("Create directory failed: " + file);
+            }
+            try (FileWriter writer = new FileWriter(STORE_FILE, false)) {
+                writer.write("Dataset,Baseline, Chunk, Chunk+BTree");
+                writer.write("\r\n");
+                for (String filename : fileNames) {
+                    writer.write(filename);
+                    writer.write(",");
+                    writer.write(fileNameBaselineToQueryTime.get(filename).toString());
+                    writer.write(",");
+                    writer.write(fileNameChunkToQueryTime.get(filename).toString());
+                    writer.write(",");
+                    writer.write(fileNameBTreeToQueryTime.get(filename).toString());
+                    writer.write("\r\n");
+                }
+                System.out.println("Done!");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void testRandomQueryTimeConsumption(int num){
+        int queryNumber = num;
         Random random = new Random();
         double start;
 
@@ -101,6 +230,8 @@ public class TestQuery {
                     start = System.nanoTime();
                     List<Double> devalues = decompressor.decompress();
                     decompressTime += (System.nanoTime() - start) / TIME_PRECISION;
+                    compressor.refresh();
+                    decompressor.refresh();
                 }
             } catch (Exception e) {
                 throw new RuntimeException(filename, e);
@@ -110,7 +241,7 @@ public class TestQuery {
                 values.get(i);
             }
             double queryBaselineTime = (System.nanoTime() - start) / TIME_PRECISION + decompressTime;
-            fileNameBaselineToQueryTime.put(filename,queryBaselineTime);
+            fileNameBaselineToQueryTime.get(filename).add(queryBaselineTime);
 
             //Chunk and Chunk+BTree
             QueryCompressor qc = new QueryCompressor(new SElfStarCompressor(new SElfXORCompressor()),filename);
@@ -122,39 +253,33 @@ public class TestQuery {
             start = System.nanoTime();
             randomQueryTimeTest(qd,indexList);
             double queryChunkTime = (System.nanoTime() - start) / TIME_PRECISION;
-            fileNameChunkToQueryTime.put(filename,queryChunkTime);
+            fileNameChunkToQueryTime.get(filename).add(queryChunkTime);
 
             start = System.nanoTime();
             randomQueryTimeTest(btqd,indexList);
             double queryBTreeTime = (System.nanoTime() - start) / TIME_PRECISION;
-            fileNameBTreeToQueryTime.put(filename,queryBTreeTime);
-        }
-
-        // write result
-        try {
-            File file = new File(STORE_FILE).getParentFile();
-            if (!file.exists() && !file.mkdirs()) {
-                throw new IOException("Create directory failed: " + file);
-            }
-            try (FileWriter writer = new FileWriter(STORE_FILE, false)) {
-                writer.write("Dataset, Chunk, Chunk+BTree");
-                writer.write("\r\n");
-                for (String filename : fileNames) {
-                    writer.write(filename);
-                    writer.write(",");
-                    writer.write(fileNameBaselineToQueryTime.get(filename).toString());
-                    writer.write(",");
-                    writer.write(fileNameChunkToQueryTime.get(filename).toString());
-                    writer.write(",");
-                    writer.write(fileNameBTreeToQueryTime.get(filename).toString());
-                    writer.write("\r\n");
-                }
-                System.out.println("Done!");
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
+            fileNameBTreeToQueryTime.get(filename).add(queryBTreeTime);
         }
     }
+
+//    @Test
+//    public void  testCompressionRate(){
+//        int block = 1000;
+//        for (String filename : fileNames){
+//            // Baseline: Buff
+//            try (BlockReader br = new BlockReader(filename,block)){
+//                List<Double> floatings
+//            } catch (Exception e){
+//                throw new RuntimeException(filename,e);
+//            }
+//
+//            //Baseline: SElf
+//            ICompressor SElfCompressor =  new SElfStarCompressor(new SElfXORCompressor());
+//
+//            // Chunk, Chunk+BTree(?)
+//
+//        }
+//    }
 
     @Test
     public void testBasicQuery(){

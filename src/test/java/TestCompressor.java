@@ -292,6 +292,7 @@ public class TestCompressor {
                     if (floatings.size() != BLOCK_SIZE) {
                         break;
                     }
+
                     if (firstMethod) {
                         fileNameParamToTotalBits.put(fileNameParam, fileNameParamToTotalBits.get(fileNameParam) + floatings.size() * 64L);
                         fileNameParamToTotalBlock.put(fileNameParam, fileNameParamToTotalBlock.get(fileNameParam) + 1L);
