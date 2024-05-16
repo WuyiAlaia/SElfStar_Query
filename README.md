@@ -130,7 +130,7 @@ File -> Project Structure -> Project -> Project SDK -> *add SDK*
 
 Click *JDK* to select the address where you want to download jdk-8
 
-### Test
+### TestBPlusTree
 
 Select the test folder, which includes *BlockReader* class and *TestCompressor* class
 

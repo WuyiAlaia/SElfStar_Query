@@ -4,8 +4,13 @@ import java.util.List;
 
 public interface IQueryDecompressor {
     List<Double> decompress(int valuesNumber);
-    Double RandomQuery (int index);
+    Double randomQuery (int index);
 
-    List<Integer> RangeQuery (double f);
+    List<Integer> rangeQuery (double f);
+
+    Double minQuery(int startIndex, int endIndex);
+
+    Double maxQuery(int startIndex, int endIndex);
+
 
 }

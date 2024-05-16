@@ -1,35 +1,36 @@
 package org.urbcomp.startdb.selfstar.compressor.query;
 
 import org.urbcomp.startdb.selfstar.compressor.ICompressor;
-import org.urbcomp.startdb.selfstar.utils.BlockReader;
+import org.urbcomp.startdb.selfstar.query.BPlusTree;
 import org.urbcomp.startdb.selfstar.query.CompressedBlock;
+import org.urbcomp.startdb.selfstar.utils.BlockReader;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
-import java.util.ArrayList;
 import java.util.List;
 
-public class QueryCompressor implements IQueryCompressor{
-    private static final String folderPath_Bytes_Chunk = "D:/bytes/ChunkBytes/";
+public class BPlusTreeQueryCompressor implements IQueryCompressor{
+    private static final String folderPath_Bytes_Tree = "D:/bytes/TreeBytes/";
     private ICompressor compressor;
     private String fileName;
     private CompressedBlock block;
-    private int blockDataCapacity;
-    private List<File> blockFiles = new ArrayList<>();
 
-    public QueryCompressor(ICompressor compressor, String filename){
-        this(compressor,filename,1024);
+    private final BPlusTree blockFilesTree;
+    private int blockDataCapacity;
+    public BPlusTreeQueryCompressor(ICompressor compressor, String filename){
+        this(compressor,filename,1024,5);
     }
 
-    public QueryCompressor(ICompressor compressor, String filename, int blockdatabitsize){
+    public BPlusTreeQueryCompressor(ICompressor compressor, String filename, int blockdatabitsize,int t){
         this.compressor = compressor;
         this.fileName = filename;
-        this.block = new CompressedBlock();
+        this.block =  new CompressedBlock();
+        this.blockFilesTree= new BPlusTree(t);
         this.blockDataCapacity = blockdatabitsize * 8;
         chunk();
-        // writeFilesToFile(blockFiles,fileName);
+        // writeFilesToFile(blockFilesTree,fileName);
     }
 
     public void chunk(){
@@ -57,10 +58,10 @@ public class QueryCompressor implements IQueryCompressor{
                             block.resetData(compressor.getBytes(),beforeAddValueBitsSize);
                             blockFile = createFiles(block.getIData(),fileName);
                             block.writeToFile(blockFile);
-                            blockFiles.add(blockFile);
+                            blockFilesTree.insert(block.getIData(),blockFile.getPath());
                         }
 
-                        //CompressedBlock refresh
+                        //add a new CompressedBlock
                         block.refresh();
                         block.resetIData(currentDataIndex);
                         minValue = floating;
@@ -87,36 +88,38 @@ public class QueryCompressor implements IQueryCompressor{
             }
             // write into the last part
             long beforeAddValueBitsSize = compressor.getCompressedSizeInBits();
-            compressor.addValue(88.88888888) ;  //解决最后未byte为写满的问题
+            compressor.addValue(88.8888888888);
             block.resetMinValue(minValue);
             block.resetMaxValue(maxValue);
             block.resetWrittenBitSize(beforeAddValueBitsSize);
             block.resetData(compressor.getBytes(),beforeAddValueBitsSize);
             blockFile = createFiles(block.getIData(),fileName);
             block.writeToFile(blockFile);
-            blockFiles.add(blockFile);
+            blockFilesTree.insert(block.getIData(),blockFile.getPath());
 
             //将第一个block的iData改为最后一个block的最后一个数据的id+1
-            block.readFromFile(blockFiles.get(0));
+            String file0Path = blockFilesTree.search(0);
+            File file0 = new File(file0Path);
+            block.readFromFile(file0);
             block.resetIData(currentDataIndex);
-            block.writeToFile(blockFiles.get(0));
+            block.writeToFile(file0);
 
         }catch (Exception e) {
             throw new RuntimeException(fileName, e);
         }
+
     }
 
-    public List<File> getBlockFiles(){
-        return blockFiles;
+    public BPlusTree getBlockFilesTree(){
+        return blockFilesTree;
     }
 
-    // 将文件列表写入文件
-    private void writeFilesToFile(List<File> blockFiles, String datasetFile) {
-        File folder = new File(folderPath_Bytes_Chunk + datasetFile + "/");
+    private void writeFilesToFile(BPlusTree bPlusTree, String datasetFile) {
+        File folder = new File(folderPath_Bytes_Tree + datasetFile + "/");
         if (!folder.exists()) {
             folder.mkdirs();
         }
-        File catalogFile = new File(folderPath_Bytes_Chunk + datasetFile + "/" + "blockFiles");
+        File catalogFile = new File(folderPath_Bytes_Tree + datasetFile + "/" + "blockFiles");
         try {
             if (!catalogFile.exists()){
                 catalogFile.createNewFile();
@@ -134,7 +137,7 @@ public class QueryCompressor implements IQueryCompressor{
 
         try (FileOutputStream fileOut = new FileOutputStream(catalogFile);
              ObjectOutputStream out = new ObjectOutputStream(fileOut)) {
-            out.writeObject(blockFiles);
+            out.writeObject(bPlusTree);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -142,14 +145,14 @@ public class QueryCompressor implements IQueryCompressor{
 
     }
 
-    private File createFiles(int iData,String datasetFile) {
-        File folder = new File(folderPath_Bytes_Chunk + datasetFile + "/");
+    private File createFiles(int iData, String datasetFile) {
+        File folder = new File(folderPath_Bytes_Tree + datasetFile + "/");
         if (!folder.exists()) {
             folder.mkdirs();
         }
 
         String fileName = iData + ".txt";
-        File file = new File(folderPath_Bytes_Chunk + datasetFile + "/" + fileName);
+        File file = new File(folderPath_Bytes_Tree + datasetFile + "/" + fileName);
         try {
             if (!file.exists()){
                 file.createNewFile();
@@ -182,4 +185,5 @@ public class QueryCompressor implements IQueryCompressor{
             return false;
         }
     }
+
 }
