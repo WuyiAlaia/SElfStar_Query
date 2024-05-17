@@ -2,6 +2,7 @@ package org.urbcomp.startdb.selfstar.compressor.query;
 
 import org.urbcomp.startdb.selfstar.compressor.ICompressor;
 import org.urbcomp.startdb.selfstar.query.BPlusTree;
+import org.urbcomp.startdb.selfstar.query.BPlusTreeSerializer;
 import org.urbcomp.startdb.selfstar.query.CompressedBlock;
 import org.urbcomp.startdb.selfstar.utils.BlockReader;
 
@@ -30,7 +31,7 @@ public class BPlusTreeQueryCompressor implements IQueryCompressor{
         this.blockFilesTree= new BPlusTree(t);
         this.blockDataCapacity = blockdatabitsize * 8;
         chunk();
-        // writeFilesToFile(blockFilesTree,fileName);
+        writeFilesToFile(blockFilesTree,fileName);
     }
 
     public void chunk(){
@@ -119,7 +120,7 @@ public class BPlusTreeQueryCompressor implements IQueryCompressor{
         if (!folder.exists()) {
             folder.mkdirs();
         }
-        File catalogFile = new File(folderPath_Bytes_Tree + datasetFile + "/" + "blockFiles");
+        File catalogFile = new File(folderPath_Bytes_Tree + datasetFile + "/" + "blockFiles.txt");
         try {
             if (!catalogFile.exists()){
                 catalogFile.createNewFile();
@@ -135,12 +136,7 @@ public class BPlusTreeQueryCompressor implements IQueryCompressor{
             e.printStackTrace();
         }
 
-        try (FileOutputStream fileOut = new FileOutputStream(catalogFile);
-             ObjectOutputStream out = new ObjectOutputStream(fileOut)) {
-            out.writeObject(bPlusTree);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        BPlusTreeSerializer.serialize(bPlusTree, catalogFile.getPath());
 
 
     }

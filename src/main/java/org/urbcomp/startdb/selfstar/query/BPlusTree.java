@@ -128,4 +128,5 @@ public class BPlusTree {
     public BPlusTreeNode getRoot(){
         return root;
     }
+    public Integer getMaxKey() {return maxKeys;}
 }

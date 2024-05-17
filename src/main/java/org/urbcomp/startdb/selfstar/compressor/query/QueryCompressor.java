@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.SimpleTimeZone;
 
 public class QueryCompressor implements IQueryCompressor{
     private static final String folderPath_Bytes_Chunk = "D:/bytes/ChunkBytes/";
@@ -18,6 +19,8 @@ public class QueryCompressor implements IQueryCompressor{
     private CompressedBlock block;
     private int blockDataCapacity;
     private List<File> blockFiles = new ArrayList<>();
+    private final List<Double> minValuesInBlocks = new ArrayList<>();
+    private final List<Double> maxValuesInBlocks = new ArrayList<>();
 
     public QueryCompressor(ICompressor compressor, String filename){
         this(compressor,filename,1024);
@@ -29,7 +32,10 @@ public class QueryCompressor implements IQueryCompressor{
         this.block = new CompressedBlock();
         this.blockDataCapacity = blockdatabitsize * 8;
         chunk();
-        // writeFilesToFile(blockFiles,fileName);
+
+        writeFilesToFile(blockFiles,fileName);
+        writeMinMaxToFile(minValuesInBlocks,fileName,"MinValues.txt");
+        writeMinMaxToFile(maxValuesInBlocks,fileName,"MaxValues.txt");
     }
 
     public void chunk(){
@@ -53,6 +59,8 @@ public class QueryCompressor implements IQueryCompressor{
                             //write data[] and WrittenBitSize
                             block.resetMinValue(minValue);
                             block.resetMaxValue(maxValue);
+                            minValuesInBlocks.add(minValue);
+                            maxValuesInBlocks.add(maxValue);
                             block.resetWrittenBitSize(beforeAddValueBitsSize);
                             block.resetData(compressor.getBytes(),beforeAddValueBitsSize);
                             blockFile = createFiles(block.getIData(),fileName);
@@ -89,7 +97,9 @@ public class QueryCompressor implements IQueryCompressor{
             long beforeAddValueBitsSize = compressor.getCompressedSizeInBits();
             compressor.addValue(88.88888888) ;  //解决最后未byte为写满的问题
             block.resetMinValue(minValue);
+            minValuesInBlocks.add(minValue);
             block.resetMaxValue(maxValue);
+            maxValuesInBlocks.add(maxValue);
             block.resetWrittenBitSize(beforeAddValueBitsSize);
             block.resetData(compressor.getBytes(),beforeAddValueBitsSize);
             blockFile = createFiles(block.getIData(),fileName);
@@ -110,13 +120,43 @@ public class QueryCompressor implements IQueryCompressor{
         return blockFiles;
     }
 
+
+    //将最大值最小值列表写入文件
+    private void writeMinMaxToFile(List<Double> values, String datasetFile, String valuesFileName){
+        File folder = new File(folderPath_Bytes_Chunk + datasetFile + "/");
+        if (!folder.exists()) {
+            folder.mkdirs();
+        }
+        File file = new File(folderPath_Bytes_Chunk + datasetFile + "/" + valuesFileName);
+        try {
+            if (!file.exists()){
+                file.createNewFile();
+            }
+            else {
+                boolean ifClear = clearFile(file);
+                if (!ifClear){
+                    System.out.println("Fail to clear the file" );
+                }
+            }
+        } catch (IOException e) {
+            System.out.println("Fail to create the file" );
+            e.printStackTrace();
+        }
+
+        try (FileOutputStream fileOut = new FileOutputStream(file);
+             ObjectOutputStream out = new ObjectOutputStream(fileOut)) {
+            out.writeObject(values);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
     // 将文件列表写入文件
     private void writeFilesToFile(List<File> blockFiles, String datasetFile) {
         File folder = new File(folderPath_Bytes_Chunk + datasetFile + "/");
         if (!folder.exists()) {
             folder.mkdirs();
         }
-        File catalogFile = new File(folderPath_Bytes_Chunk + datasetFile + "/" + "blockFiles");
+        File catalogFile = new File(folderPath_Bytes_Chunk + datasetFile + "/" + "blockFiles.txt");
         try {
             if (!catalogFile.exists()){
                 catalogFile.createNewFile();
