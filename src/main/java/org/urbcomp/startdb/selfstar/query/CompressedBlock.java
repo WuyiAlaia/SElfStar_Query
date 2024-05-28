@@ -55,7 +55,6 @@ public class CompressedBlock {
                 data[writtenByteSize] |= bit << (7 - i);
             }
         }
-
         this.data = data;
     }
 

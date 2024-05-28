@@ -29,11 +29,11 @@ public class BPlusTreeQueryCompressor implements IQueryCompressor{
         this.block =  new CompressedBlock();
         this.blockFilesTree= new BPlusTree(t);
         this.blockDataCapacity = blockdatabitsize * 8;
-        chunk();
+        compressionChunk();
         // writeFilesToFile(blockFilesTree,fileName);
     }
 
-    public void chunk(){
+    public void compressionChunk(){
         int currentDataIndex = 0;
         long currentBitSize;
         double maxValue = Integer.MIN_VALUE;

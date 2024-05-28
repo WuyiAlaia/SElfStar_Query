@@ -23,22 +23,53 @@ public class QueryCompressor implements IQueryCompressor{
         this(compressor,filename,1024);
     }
 
-    public QueryCompressor(ICompressor compressor, String filename, int blockdatabitsize){
+    public QueryCompressor(ICompressor compressor, String filename, int blockBitSize){
         this.compressor = compressor;
         this.fileName = filename;
         this.block = new CompressedBlock();
-        this.blockDataCapacity = blockdatabitsize * 8;
-        chunk();
+        this.blockDataCapacity = blockBitSize * 8;
+        compressionChunk();
         // writeFilesToFile(blockFiles,fileName);
     }
 
-    public void chunk(){
+    private int lastBitsSize = 0;
+    private boolean blockIfFull = true;
+    private int currentDataIndex = 0;
+
+    private double minValue;
+    private double maxValue;
+
+
+
+    public void compression(double value){
+        compressor.addValue(value);
+        long bitSize = compressor.getCompressedSizeInBits();
+        if(blockIfFull|| bitSize>blockDataCapacity){
+            if (currentDataIndex != 0) {
+                //write data[] and WrittenBitSize
+                block.resetMinValue(minValue);
+                block.resetMaxValue(maxValue);
+                block.resetWrittenBitSize(lastBitsSize);
+                block.resetData(compressor.getBytes(),lastBitsSize);
+            }
+        }
+    }
+
+    public void refreshCompressor(){
+
+    }
+
+    public void refreshBlockParam(){
+        block.refresh();
+    }
+
+    public void compressionChunk(){
         int currentDataIndex = 0;
         long currentBitSize;
         double maxValue = Integer.MIN_VALUE;
         double minValue = Integer.MAX_VALUE;
         File blockFile;
-        try (BlockReader br = new BlockReader(fileName,1000)){
+        try (BlockReader br = new BlockReader(fileName,1000)){//读1000个数
             List<Double> floatings;
             boolean blockIfFull = true;
             while ((floatings = br.nextBlock()) != null){
