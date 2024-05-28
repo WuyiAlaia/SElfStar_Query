@@ -1,10 +1,7 @@
 package org.urbcomp.startdb.selfstar.decompressor.query;
 
 import org.urbcomp.startdb.selfstar.decompressor.IDecompressor;
-import org.urbcomp.startdb.selfstar.query.BPlusTree;
-import org.urbcomp.startdb.selfstar.query.BPlusTreeLeafNode;
-import org.urbcomp.startdb.selfstar.query.BPlusTreeNode;
-import org.urbcomp.startdb.selfstar.query.CompressedBlock;
+import org.urbcomp.startdb.selfstar.query.*;
 import org.urbcomp.startdb.selfstar.utils.BlockReader;
 
 import java.io.File;
@@ -20,10 +17,10 @@ public class BPlusTreeQueryDecompressor implements IQueryDecompressor{
     private final IDecompressor decompressor;
     private final BPlusTree blockFilesTree;
     private final CompressedBlock block = new CompressedBlock();
-    public BPlusTreeQueryDecompressor(IDecompressor decompressor, BPlusTree blockFilesTree) {
+    public BPlusTreeQueryDecompressor(IDecompressor decompressor, String datasetFileName) {
         this.decompressor = decompressor;
-        this.blockFilesTree = blockFilesTree;
-        // this.blockFilesTree = readFilesFromFile(datasetFileName);
+        // this.blockFilesTree = blockFilesTree;
+        this.blockFilesTree =  BPlusTreeSerializer.deserialize(folderPath_Bytes_Tree + datasetFileName + "/" + "blockFiles.txt");
     }
 
 
@@ -120,16 +117,16 @@ public class BPlusTreeQueryDecompressor implements IQueryDecompressor{
         }
 
         BPlusTreeLeafNode startNode = blockFilesTree.searchLeafNode(startIndex);
-        List<Integer> keys = startNode.getKeys();
-        int startPos = keys.size() -1;
-        while (startPos > 0 && startIndex < keys.get(startPos)) {
+        List<Integer> startKeys = startNode.getKeys();
+        int startPos = startKeys.size() -1;
+        while (startPos > 0 && startIndex < startKeys.get(startPos)) {
             startPos--;
         }
         String startFilePath = startNode.getFileReferences().get(startPos);
         BPlusTreeLeafNode endNode = blockFilesTree.searchLeafNode(endIndex);
-        keys = endNode.getKeys();
-        int endPos = keys.size() -1;
-        while (endPos > 0 && endIndex < keys.get(endPos)) {
+        List<Integer> endKeys = endNode.getKeys();
+        int endPos = endKeys.size() -1;
+        while (endPos > 0 && endIndex < endKeys.get(endPos)) {
             endPos--;
         }
         String endFilePath = endNode.getFileReferences().get(endPos);
@@ -144,34 +141,47 @@ public class BPlusTreeQueryDecompressor implements IQueryDecompressor{
                 max = max2;
             }
 
-            for (int i = startPos + 1; i < startNode.getKeys().size();i++){
-                String blockFilePath = startNode.getFileReferences().get(i);
-                double maxInBlock = block.readMaxValueFromFile(new File(blockFilePath));
-                if (max < maxInBlock){
-                    max = maxInBlock;
+            boolean ifNeighbor = false;
+            if (startNode.getKeys().get(0) == endNode.getKeys().get(0)){
+                if (startPos + 1 == endPos){
+                    ifNeighbor = true;
+                }
+            } else {
+                if (startPos == startKeys.size()-1  && endPos == 0 && startNode.getNext().getKeys().get(0) == endNode.getKeys().get(0)){
+                    ifNeighbor = true;
                 }
             }
-            BPlusTreeLeafNode node = startNode.getNext();
-            while (node != null){
-                if (node.getKeys().get(0) != endNode.getKeys().get(0)){
-                    for (String blockFilePath:node.getFileReferences()){
-                        double maxInBlock = block.readMaxValueFromFile(new File(blockFilePath));
-                        if (max < maxInBlock){
-                            max = maxInBlock;
-                        }
-                    }
-                } else {
-                    for (int i = 0; i < endPos;i++){
-                        String blockFilePath = node.getFileReferences().get(i);
-                        double maxInBlock = block.readMaxValueFromFile(new File(blockFilePath));
-                        if (max < maxInBlock){
-                            max = maxInBlock;
-                        }
 
+            if (!ifNeighbor){
+                for (int i = startPos + 1; i < startNode.getKeys().size();i++){
+                    String blockFilePath = startNode.getFileReferences().get(i);
+                    double maxInBlock = block.readMaxValueFromFile(new File(blockFilePath));
+                    if (max < maxInBlock){
+                        max = maxInBlock;
                     }
-                    break;
                 }
-                node = node.getNext();
+                BPlusTreeLeafNode node = startNode.getNext();
+                while (node != null){
+                    if (node.getKeys().get(0) != endNode.getKeys().get(0)){
+                        for (String blockFilePath:node.getFileReferences()){
+                            double maxInBlock = block.readMaxValueFromFile(new File(blockFilePath));
+                            if (max < maxInBlock){
+                                max = maxInBlock;
+                            }
+                        }
+                    } else {
+                        for (int i = 0; i < endPos;i++){
+                            String blockFilePath = node.getFileReferences().get(i);
+                            double maxInBlock = block.readMaxValueFromFile(new File(blockFilePath));
+                            if (max < maxInBlock){
+                                max = maxInBlock;
+                            }
+
+                        }
+                        break;
+                    }
+                    node = node.getNext();
+                }
             }
         }
         return max;
@@ -188,16 +198,16 @@ public class BPlusTreeQueryDecompressor implements IQueryDecompressor{
         }
 
         BPlusTreeLeafNode startNode = blockFilesTree.searchLeafNode(startIndex);
-        List<Integer> keys = startNode.getKeys();
-        int startPos = keys.size() -1;
-        while (startPos > 0 && startIndex < keys.get(startPos)) {
+        List<Integer> startKeys = startNode.getKeys();
+        int startPos = startKeys.size() -1;
+        while (startPos > 0 && startIndex < startKeys.get(startPos)) {
             startPos--;
         }
         String startFilePath = startNode.getFileReferences().get(startPos);
         BPlusTreeLeafNode endNode = blockFilesTree.searchLeafNode(endIndex);
-        keys = endNode.getKeys();
-        int endPos = keys.size() -1;
-        while (endPos > 0 && endIndex < keys.get(endPos)) {
+        List<Integer> endKeys = endNode.getKeys();
+        int endPos = endKeys.size() -1;
+        while (endPos > 0 && endIndex < endKeys.get(endPos)) {
             endPos--;
         }
         String endFilePath = endNode.getFileReferences().get(endPos);
@@ -212,37 +222,50 @@ public class BPlusTreeQueryDecompressor implements IQueryDecompressor{
                 min = min2;
             }
 
-
-            for (int i = startPos + 1; i < startNode.getKeys().size();i++){
-                String blockFilePath = startNode.getFileReferences().get(i);
-                double minInBlock = block.readMinValueFromFile(new File(blockFilePath));
-                if (min > minInBlock){
-                    min = minInBlock;
+            boolean ifNeighbor = false;
+            if (startNode.getKeys().get(0) == endNode.getKeys().get(0)){
+                if (startPos + 1 == endPos){
+                    ifNeighbor = true;
+                }
+            } else {
+                if (startPos == startKeys.size()-1  && endPos == 0 && startNode.getNext().getKeys().get(0) == endNode.getKeys().get(0)){
+                    ifNeighbor = true;
                 }
             }
-            BPlusTreeLeafNode node = startNode.getNext();
-            while (node != null){
-                if (node.getKeys().get(0) != endNode.getKeys().get(0)){
-                    for (String blockFilePath:node.getFileReferences()){
-                        double minInBlock = block.readMinValueFromFile(new File(blockFilePath));
-                        if (min > minInBlock){
-                            min = minInBlock;
-                        }
-                    }
-                } else {
-                    for (int i = 0; i < endPos;i++){
-                        String blockFilePath = node.getFileReferences().get(i);
-                        double minInBlock = block.readMinValueFromFile(new File(blockFilePath));
-                        if (min > minInBlock){
-                            min = minInBlock;
-                        }
 
+            if(!ifNeighbor){
+                for (int i = startPos + 1; i < startNode.getKeys().size();i++){
+                    String blockFilePath = startNode.getFileReferences().get(i);
+                    double minInBlock = block.readMinValueFromFile(new File(blockFilePath));
+                    if (min > minInBlock){
+                        min = minInBlock;
                     }
-                    break;
                 }
-                node = node.getNext();
+                BPlusTreeLeafNode node = startNode.getNext();
+                while (node != null){
+                    if (node.getKeys().get(0) != endNode.getKeys().get(0)){
+                        for (String blockFilePath:node.getFileReferences()){
+                            double minInBlock = block.readMinValueFromFile(new File(blockFilePath));
+                            if (min > minInBlock){
+                                min = minInBlock;
+                            }
+                        }
+                    } else {
+                        for (int i = 0; i < endPos;i++){
+                            String blockFilePath = node.getFileReferences().get(i);
+                            double minInBlock = block.readMinValueFromFile(new File(blockFilePath));
+                            if (min > minInBlock){
+                                min = minInBlock;
+                            }
+
+                        }
+                        break;
+                    }
+                    node = node.getNext();
+                }
             }
-        }
+            }
+
         return min;
     }
 
@@ -251,7 +274,9 @@ public class BPlusTreeQueryDecompressor implements IQueryDecompressor{
         decompressor.refresh();
         block.readFromFile(new File(blockFilePath));
         decompressor.setBytes(block.getData());
-        fromIndex -= block.getIData();
+        String blockFileName = new File(blockFilePath).getName();
+        int iData =Integer.parseInt(blockFileName.substring(0, blockFileName.lastIndexOf('.')));
+        fromIndex -= iData;
         Double max = Double.MIN_VALUE;
         Double value;
         for (int i = 0; i < fromIndex; i ++){
@@ -339,7 +364,9 @@ public class BPlusTreeQueryDecompressor implements IQueryDecompressor{
             decompressor.refresh();
             block.readFromFile(new File(blockFilePath));
             decompressor.setBytes(block.getData());
-            fromIndex -= block.getIData();
+            String blockFileName = new File(blockFilePath).getName();
+            int iData =Integer.parseInt(blockFileName.substring(0, blockFileName.lastIndexOf('.')));
+            fromIndex -= iData;
             Double min = Double.MAX_VALUE;
             Double value;
             for (int i = 0; i < fromIndex; i ++){
@@ -423,17 +450,6 @@ public class BPlusTreeQueryDecompressor implements IQueryDecompressor{
         return min;
     }
 
-    private BPlusTree readFilesFromFile(String datasetFileName) {
-        BPlusTree bPlusTree = null;
-        File catalogFile = new File(folderPath_Bytes_Tree + datasetFileName + "/" + "blockFiles");
-        try (FileInputStream fileIn = new FileInputStream(catalogFile);
-             ObjectInputStream in = new ObjectInputStream(fileIn)) {
-            bPlusTree = (BPlusTree) in.readObject();
-        } catch (IOException | ClassNotFoundException e) {
-            e.printStackTrace();
-        }
-        return bPlusTree;
-    }
 
     public void refresh(){
         decompressor.refresh();

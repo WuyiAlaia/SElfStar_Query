@@ -88,9 +88,9 @@ public class TestQuery {
         boolean ifPassOfTree = false;
         for (String filename : fileNames) {
             QueryCompressor qc = new QueryCompressor(new SElfStarCompressor(new SElfXORCompressor()), filename);
-            QueryDecompressor qd = new QueryDecompressor(new ElfStarDecompressor(new SElfStarXORDecompressor()), qc.getBlockFiles());
+            QueryDecompressor qd = new QueryDecompressor(new ElfStarDecompressor(new SElfStarXORDecompressor()), filename);
             BPlusTreeQueryCompressor tqc = new BPlusTreeQueryCompressor(new SElfStarCompressor(new SElfXORCompressor()), filename);
-            BPlusTreeQueryDecompressor tqd = new BPlusTreeQueryDecompressor(new ElfStarDecompressor(new SElfStarXORDecompressor()), tqc.getBlockFilesTree());
+            BPlusTreeQueryDecompressor tqd = new BPlusTreeQueryDecompressor(new ElfStarDecompressor(new SElfStarXORDecompressor()), filename);
 
             ifPassOfChunk = randomQueryIfRight(qd, filename);
             ifPassOfTree = randomQueryIfRight(tqd, filename);
@@ -101,12 +101,12 @@ public class TestQuery {
     }
     @Test
     public void testMaxMinQueryIfRight() {
-        String filename = "Air-pressure.csv";
-        QueryCompressor qc = new QueryCompressor(new SElfStarCompressor(new SElfXORCompressor()), filename);
-        QueryDecompressor qd = new QueryDecompressor(new ElfStarDecompressor(new SElfStarXORDecompressor()), qc.getBlockFiles());
-        BPlusTreeQueryCompressor tqc = new BPlusTreeQueryCompressor(new SElfStarCompressor(new SElfXORCompressor()), filename);
-        BPlusTreeQueryDecompressor tqd = new BPlusTreeQueryDecompressor(new ElfStarDecompressor(new SElfStarXORDecompressor()), tqc.getBlockFilesTree());
 
+        String filename = "IR-bio-temp.csv";
+        QueryCompressor qc = new QueryCompressor(new SElfStarCompressor(new SElfXORCompressor()), filename);
+        QueryDecompressor qd = new QueryDecompressor(new ElfStarDecompressor(new SElfStarXORDecompressor()), filename);
+        BPlusTreeQueryCompressor tqc = new BPlusTreeQueryCompressor(new SElfStarCompressor(new SElfXORCompressor()), filename);
+        BPlusTreeQueryDecompressor tqd = new BPlusTreeQueryDecompressor(new ElfStarDecompressor(new SElfStarXORDecompressor()), filename);
 
         int queryNumber = 100;
         Random random = new Random();
@@ -135,10 +135,10 @@ public class TestQuery {
             if (!minTree.equals(minFromFile) || !maxTree.equals(maxFromFile)){
                 testMaxMinTree = false;
                 if (!minTree.equals(minFromFile)){
-                    System.out.println("min:"+startList.get(i) + " " + endList.get(i));
+                    System.out.println("min:"+startList.get(i) + " " + endList.get(i) + minTree);System.out.println(minFromFile);
                 }
                 if (!maxTree.equals(maxFromFile)){
-                    System.out.println("max:"+startList.get(i) + " " + endList.get(i));
+                    System.out.println("max:"+startList.get(i) + " " + endList.get(i) + maxTree);System.out.println(maxFromFile);
                 }
             }
         }
@@ -166,9 +166,9 @@ public class TestQuery {
         List<Double> floatings = readfile(filename);
 
         QueryCompressor qc = new QueryCompressor(new SElfStarCompressor(new SElfXORCompressor()), filename);
-        QueryDecompressor qd = new QueryDecompressor(new ElfStarDecompressor(new SElfStarXORDecompressor()), qc.getBlockFiles());
+        QueryDecompressor qd = new QueryDecompressor(new ElfStarDecompressor(new SElfStarXORDecompressor()), filename);
         BPlusTreeQueryCompressor tqc = new BPlusTreeQueryCompressor(new SElfStarCompressor(new SElfXORCompressor()), filename);
-        BPlusTreeQueryDecompressor tqd = new BPlusTreeQueryDecompressor(new ElfStarDecompressor(new SElfStarXORDecompressor()), tqc.getBlockFilesTree());
+        BPlusTreeQueryDecompressor tqd = new BPlusTreeQueryDecompressor(new ElfStarDecompressor(new SElfStarXORDecompressor()), filename);
 
 
         int testTimes = 100;
@@ -242,6 +242,7 @@ public class TestQuery {
         return testRandom;
     }
 
+
     @Test
     public void testRandomQueryTimeComsumption() throws IOException {
 
@@ -263,9 +264,6 @@ public class TestQuery {
             try (BlockReader br = new BlockReader(filename, BLOCK_SIZE)) {
                 List<Double> floatings;
                 while ((floatings = br.nextBlock()) != null) {
-                    if (floatings.size() != BLOCK_SIZE) {
-                        break;
-                    }
                     floatings.forEach(compressor::addValue);
                     compressor.close();
                     writeBytesToFile(compressor.getBytes(),fileForBaseline.getPath());
@@ -296,7 +294,7 @@ public class TestQuery {
 
             //Chunk
             QueryCompressor qc = new QueryCompressor(new SElfStarCompressor(new SElfXORCompressor()), filename);
-            QueryDecompressor qd = new QueryDecompressor(new ElfStarDecompressor(new SElfStarXORDecompressor()), qc.getBlockFiles());
+            QueryDecompressor qd = new QueryDecompressor(new ElfStarDecompressor(new SElfStarXORDecompressor()), filename);
 
             start = System.nanoTime();
             qd.randomQuery(queryIndex);
@@ -305,7 +303,7 @@ public class TestQuery {
 
             //BPlusTree + Chunk
             BPlusTreeQueryCompressor tqc = new BPlusTreeQueryCompressor(new SElfStarCompressor(new SElfXORCompressor()), filename);
-            BPlusTreeQueryDecompressor tqd = new BPlusTreeQueryDecompressor(new ElfStarDecompressor(new SElfStarXORDecompressor()), tqc.getBlockFilesTree());
+            BPlusTreeQueryDecompressor tqd = new BPlusTreeQueryDecompressor(new ElfStarDecompressor(new SElfStarXORDecompressor()), filename);
             start = System.nanoTime();
             tqd.randomQuery(queryIndex);
             double BPlusTreeRandomQueryTime = (System.nanoTime() - start) /TIME_PRECISION;
@@ -364,9 +362,6 @@ public class TestQuery {
             try (BlockReader br = new BlockReader(filename, BLOCK_SIZE)) {
                 List<Double> floatings;
                 while ((floatings = br.nextBlock()) != null) {
-                    if (floatings.size() != BLOCK_SIZE) {
-                        break;
-                    }
                     floatings.forEach(compressor::addValue);
                     compressor.close();
                     writeBytesToFile(compressor.getBytes(),fileForBaseline.getPath());
@@ -400,7 +395,7 @@ public class TestQuery {
 
             //Chunk
             QueryCompressor qc = new QueryCompressor(new SElfStarCompressor(new SElfXORCompressor()), filename);
-            QueryDecompressor qd = new QueryDecompressor(new ElfStarDecompressor(new SElfStarXORDecompressor()), qc.getBlockFiles());
+            QueryDecompressor qd = new QueryDecompressor(new ElfStarDecompressor(new SElfStarXORDecompressor()), filename);
 
             start = System.nanoTime();
             qd.maxQuery(startIndex,endIndex);
@@ -409,7 +404,7 @@ public class TestQuery {
 
             //BPlusTree + Chunk
             BPlusTreeQueryCompressor tqc = new BPlusTreeQueryCompressor(new SElfStarCompressor(new SElfXORCompressor()), filename);
-            BPlusTreeQueryDecompressor tqd = new BPlusTreeQueryDecompressor(new ElfStarDecompressor(new SElfStarXORDecompressor()), tqc.getBlockFilesTree());
+            BPlusTreeQueryDecompressor tqd = new BPlusTreeQueryDecompressor(new ElfStarDecompressor(new SElfStarXORDecompressor()), filename);
             start = System.nanoTime();
             tqd.maxQuery(startIndex,endIndex);
             double BPlusTreeMaxQueryTime = (System.nanoTime() - start) /TIME_PRECISION;

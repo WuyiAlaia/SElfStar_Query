@@ -17,11 +17,15 @@ public class QueryDecompressor implements IQueryDecompressor{
     private final IDecompressor decompressor;
     private final CompressedBlock block = new CompressedBlock();
     private final List<File> blockFiles;
+    private final String datasetFileName;
+    private List<Double> minValuesInBlocks = null;
+    private List<Double> maxValuesInBlocks = null;
 
-    public QueryDecompressor(IDecompressor decompressor, List<File> blockFiles) {
+    public QueryDecompressor(IDecompressor decompressor, String datasetFileName) {
         this.decompressor = decompressor;
-        this.blockFiles = blockFiles;
-        // this.blockFiles = readFilesFromFile(datasetFileName);
+        this.datasetFileName = datasetFileName;
+        // this.blockFiles = blockFiles;
+        this.blockFiles = readFilesFromFile(datasetFileName);
     }
 
 
@@ -79,8 +83,9 @@ public class QueryDecompressor implements IQueryDecompressor{
             if (max < max2){
                 max = max2;
             }
+            maxValuesInBlocks = readMinMaxValuesFromFile(datasetFileName, "MaxValues.txt");
             for (int i = startBlockFileIndex + 1; i < endBlockFileIndex; i++){
-                double maxInBlock = block.readMaxValueFromFile(blockFiles.get(i));
+                double maxInBlock = maxValuesInBlocks.get(i);
                 if (max < maxInBlock){
                     max = maxInBlock;
                 }
@@ -110,8 +115,9 @@ public class QueryDecompressor implements IQueryDecompressor{
             if (min > min2){
                 min = min2;
             }
+            minValuesInBlocks = readMinMaxValuesFromFile(datasetFileName,"MinValues.txt");
             for (int i = startBlockFileIndex + 1; i < endBlockFileIndex; i++){
-                double minInBlock = block.readMinValueFromFile(blockFiles.get(i));
+                double minInBlock = minValuesInBlocks.get(i);
                 if (min > minInBlock){
                     min = minInBlock;
                 }
@@ -122,10 +128,12 @@ public class QueryDecompressor implements IQueryDecompressor{
 
     public List<Integer> rangeQuery(double f){
         List<Integer> result = new ArrayList<>();
+        minValuesInBlocks = readMinMaxValuesFromFile(datasetFileName,"MinValues.txt");
+        maxValuesInBlocks = readMinMaxValuesFromFile(datasetFileName, "MaxValues.txt");
         for (int i = 0 ; i < blockFiles.size();i++){
-            File file = blockFiles.get(i);
-            if (f <= block.readMaxValueFromFile(file) && f >= block.readMinValueFromFile(file)){
+            if (f <= maxValuesInBlocks.get(i) && f >= minValuesInBlocks.get(i)){
                 decompressor.refresh();
+                File file = blockFiles.get(i);
                 block.readFromFile(file);
                 decompressor.setBytes(block.getData());
                 //int indexOfFirstData = block.getIData();
@@ -175,7 +183,9 @@ public class QueryDecompressor implements IQueryDecompressor{
         decompressor.refresh();
         block.readFromFile(blockFiles.get(blockIndex));
         decompressor.setBytes(block.getData());
-        fromIndex -= block.getIData();
+        String blockFileName = blockFiles.get(blockIndex).getName();
+        int iData =Integer.parseInt(blockFileName.substring(0, blockFileName.lastIndexOf('.')));
+        fromIndex -= iData;
         Double max = Double.MIN_VALUE;
         Double value;
         for (int i = 0; i < fromIndex; i ++){
@@ -230,7 +240,9 @@ public class QueryDecompressor implements IQueryDecompressor{
         decompressor.refresh();
         block.readFromFile(blockFiles.get(blockIndex));
         decompressor.setBytes(block.getData());
-        fromIndex -= block.getIData();
+        String blockFileName = blockFiles.get(blockIndex).getName();
+        int iData =Integer.parseInt(blockFileName.substring(0, blockFileName.lastIndexOf('.')));
+        fromIndex -= iData;
         Double min = Double.MAX_VALUE;
         for (int i = 0; i < fromIndex; i ++){
             decompressor.nextValue();
@@ -283,7 +295,7 @@ public class QueryDecompressor implements IQueryDecompressor{
 
     private List<File> readFilesFromFile(String datasetFileName) {
         List<File> newFiles = new ArrayList<>();
-        File catalogFile = new File(folderPath_Bytes_Chunk + datasetFileName + "/" + "blockFiles");
+        File catalogFile = new File(folderPath_Bytes_Chunk + datasetFileName + "/" + "blockFiles.txt");
         try (FileInputStream fileIn = new FileInputStream(catalogFile);
              ObjectInputStream in = new ObjectInputStream(fileIn)) {
             newFiles = (List<File>) in.readObject();
@@ -292,6 +304,18 @@ public class QueryDecompressor implements IQueryDecompressor{
         }
         return newFiles;
     }
+    private List<Double> readMinMaxValuesFromFile(String datasetFileName, String valueFileName) {
+        List<Double> values = new ArrayList<>();
+        File catalogFile = new File(folderPath_Bytes_Chunk + datasetFileName + "/" + valueFileName);
+        try (FileInputStream fileIn = new FileInputStream(catalogFile);
+             ObjectInputStream in = new ObjectInputStream(fileIn)) {
+            values = (List<Double>) in.readObject();
+        } catch (IOException | ClassNotFoundException e) {
+            e.printStackTrace();
+        }
+        return values;
+    }
+
 
     public void refresh(){
         decompressor.refresh();

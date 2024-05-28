@@ -1,17 +1,149 @@
 import org.junit.jupiter.api.Test;
+import org.urbcomp.startdb.selfstar.compressor.ICompressor;
+import org.urbcomp.startdb.selfstar.compressor.SElfStarCompressor;
+import org.urbcomp.startdb.selfstar.compressor.xor.SElfXORCompressor;
+import org.urbcomp.startdb.selfstar.decompressor.ElfStarDecompressor;
+import org.urbcomp.startdb.selfstar.decompressor.IDecompressor;
+import org.urbcomp.startdb.selfstar.decompressor.xor.SElfStarXORDecompressor;
 import org.urbcomp.startdb.selfstar.query.BPlusTree;
 import org.urbcomp.startdb.selfstar.query.CompressedBlock;
-import org.urbcomp.startdb.selfstar.query.metaData;
 import org.urbcomp.startdb.selfstar.utils.BlockFileReader;
 import org.urbcomp.startdb.selfstar.query.BPlusTreeSerializer;
+import org.urbcomp.startdb.selfstar.utils.ByteArrayFileReader;
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 public class TestBPlusTree {
     private static final String folderPath_Bytes_Tree = "D:/bytes/TreeBytes/";
     private static final String folderPath_Bytes_Chunk = "D:/bytes/ChunkBytes/";
+    private static final double TIME_PRECISION = 1000.0;
+    private static final int BLOCK_SIZE = 10;
+    private final String[] fileNames = {
+            "Air-pressure.csv",
+            "Air-sensor.csv",
+            "Bird-migration.csv",
+            "Bitcoin-price.csv",
+            "Basel-temp.csv",
+            "Basel-wind.csv",
+            "City-temp.csv",
+            "Dew-point-temp.csv",
+            "IR-bio-temp.csv",
+            "PM10-dust.csv",
+            "Stocks-DE.csv",
+            "Stocks-UK.csv",
+            "Stocks-USA.csv",
+            "Wind-Speed.csv",
+            "Blockchain-tr.csv",
+            "City-lat.csv",
+            "City-lon.csv",
+            "Food-price.csv",
+            "POI-lat.csv",
+            "POI-lon.csv",
+            "SSD-bench.csv",
+            "electric_vehicle_charging.csv"
+    };
+    @Test
+    public void testBaseline() throws IOException {
+        int queryIndex;
+        Random random = new Random();
+
+        String filename = "Air-pressure.csv";
+        List<Double> floatingsReadFromFile = readfile(filename);
+        queryIndex = random.nextInt(floatingsReadFromFile.size());
+        //Baseline
+        ICompressor compressor = new SElfStarCompressor(new SElfXORCompressor());
+        IDecompressor decompressor = new ElfStarDecompressor(new SElfStarXORDecompressor());
+        File fileForBaseline = createFiles("SElfCompressor",filename);
+        int timesOfWrite = 0;
+        int compressNUmber = 0;
+        try (BlockReader br = new BlockReader(filename, BLOCK_SIZE)) {
+            List<Double> floatings;
+            while ((floatings = br.nextBlock()) != null) {
+                floatings.forEach(compressor::addValue);
+                compressNUmber += floatings.size();
+                compressor.close();
+                writeBytesToFile(compressor.getBytes(),fileForBaseline.getPath());
+                compressor.refresh();
+                timesOfWrite++;
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(filename, e);
+        }
+        // decompress and query
+        double start = System.nanoTime();
+        List<Double> allFloatings = new ArrayList<>();
+        ByteArrayFileReader byteArrayFileReaderBaseline = new ByteArrayFileReader(fileForBaseline.getPath());
+        for (int i = 0; i < timesOfWrite; i++){
+            byte[] data = byteArrayFileReaderBaseline.readNextBytes();
+            decompressor.refresh();
+            decompressor.setBytes(data);
+            List<Double> floatingsOneTime = decompressor.decompress();
+            for (Double floating : floatingsOneTime){
+                allFloatings.add(floating);
+            }
+        }
+        allFloatings.get(queryIndex);
+        System.out.println("The numbers when compress:" + compressNUmber);
+        System.out.println("The numbers after compression:" + allFloatings.size());
+        System.out.println("The numbers in file:" + floatingsReadFromFile.size());
+        double baselineRandomQueryTime = (System.nanoTime() - start) / TIME_PRECISION;
+        System.out.println(baselineRandomQueryTime);
+
+
+    }
+
+
+    private File createFiles(String compressor,String datasetFile) {
+        File folder = new File("D:/bytes/" + compressor + "/" + datasetFile + "/");
+        if (!folder.exists()) {
+            folder.mkdirs();
+        }
+        File file = new File("D:/bytes/" + compressor + "/" + datasetFile + "/" + "compressedBits");
+        try {
+            if (!file.exists()){
+                file.createNewFile();
+            }
+            else {
+                boolean ifClear = clearFile(file);
+                if (!ifClear){
+                    System.out.println("Fail to clear the file");
+                }
+            }
+        } catch (IOException e) {
+            System.out.println("Fail to create the file");
+            e.printStackTrace();
+        }
+        return file;
+    }
+    public List<Double> readfile(String filename) {
+        List<Double> floatings = new ArrayList<>();
+        try (BlockReader br = new BlockReader(filename, 1000)) {
+            List<Double> tmp;
+            while ((tmp = br.nextBlock()) != null) {
+                floatings.addAll(tmp);
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(filename, e);
+        }
+        return floatings;
+    }
+    public void writeBytesToFile(byte[] data, String filePath) throws IOException {
+        FileOutputStream fos = new FileOutputStream(filePath, true); // 追加模式
+        BufferedOutputStream bos = new BufferedOutputStream(fos);
+        DataOutputStream dos = new DataOutputStream(bos);
+
+        // 写入数据长度
+        dos.writeInt(data.length);
+
+        // 写入数据本身
+        bos.write(data);
+
+        dos.flush();
+        dos.close();
+    }
+
+
 
     @Test
     public void testReadFiles(){
@@ -25,7 +157,7 @@ public class TestBPlusTree {
         tree.insert(6,"6.txt");
         tree.insert(7,"7.txt");
         BPlusTreeSerializer.serialize(tree, "D:/bplus_tree_index.txt");
-        BPlusTree loadedBPlusTree = BPlusTreeSerializer.deserialize("bplus_tree_index.txt", 3);
+        BPlusTree loadedBPlusTree = BPlusTreeSerializer.deserialize("D:/bplus_tree_index.txt");
         System.out.println("hh");
     }
     @Test
