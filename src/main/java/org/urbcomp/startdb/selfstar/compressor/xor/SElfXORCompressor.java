@@ -89,8 +89,8 @@ public class SElfXORCompressor implements IXORCompressor {
     public int addValue(long value) {
         if (first) {
             return PostOfficeSolver.writePositions(leadPositions, out)
-                + PostOfficeSolver.writePositions(trailPositions, out)
-                + writeFirst(value);
+                    + PostOfficeSolver.writePositions(trailPositions, out)
+                    + writeFirst(value);
         } else {
             return compressValue(value);
         }
@@ -117,6 +117,11 @@ public class SElfXORCompressor implements IXORCompressor {
         int thisSize = addValue(Elf64Utils.END_SIGN);
         out.flush();
 
+        update();
+        return thisSize;
+    }
+
+    public void update() {
         // we update distribution using the inner info
         leadPositions = PostOfficeSolver.initRoundAndRepresentation(leadDistribution, leadingRepresentation, leadingRound);
         leadingBitsPerValue = PostOfficeSolver.positionLength2Bits[leadPositions.length];
@@ -124,7 +129,6 @@ public class SElfXORCompressor implements IXORCompressor {
         trailPositions = PostOfficeSolver.initRoundAndRepresentation(trailDistribution, trailingRepresentation, trailingRound);
         trailingBitsPerValue = PostOfficeSolver.positionLength2Bits[trailPositions.length];
 
-        return thisSize;
     }
 
 
@@ -186,6 +190,7 @@ public class SElfXORCompressor implements IXORCompressor {
 
     @Override
     public void refresh() {
+        update();
         out = new OutputBitStream(
                 new byte[(int) (((capacity + 1) * 8 + capacity / 8 + 1) * 1.2)]);
         first = true;
