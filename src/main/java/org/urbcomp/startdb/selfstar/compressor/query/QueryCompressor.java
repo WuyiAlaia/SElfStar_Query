@@ -2,10 +2,8 @@ package org.urbcomp.startdb.selfstar.compressor.query;
 
 import org.urbcomp.startdb.selfstar.compressor.ICompressor;
 import org.urbcomp.startdb.selfstar.query.CompressedChunk;
-import org.urbcomp.startdb.selfstar.utils.BlockReader;
-import org.urbcomp.startdb.selfstar.query.CompressedBlock;
 
-import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
@@ -25,7 +23,7 @@ public class QueryCompressor implements IQueryCompressor {
 
     private List<CompressedChunk> chunks = new ArrayList<>();
 
-    public QueryCompressor(ICompressor compressor, String filename) {
+    public QueryCompressor(ICompressor compressor) {
         this(compressor, 1024);
     }
 
@@ -57,6 +55,32 @@ public class QueryCompressor implements IQueryCompressor {
             minValue = value;
         }
     }
+
+    public List<CompressedChunk> getChunks() {
+        return chunks;
+    }
+
+
+    public void writeChunksToFile(String filename) {
+        try (FileOutputStream fileOut = new FileOutputStream(filename);
+             ObjectOutputStream objectOut = new ObjectOutputStream(fileOut)) {
+            objectOut.writeInt(chunks.size());
+            for (CompressedChunk chunk : chunks) {
+                objectOut.writeInt(chunk.getIData());
+                objectOut.writeInt(chunk.getDataNum());
+                objectOut.writeDouble(chunk.getMinValue());
+                objectOut.writeDouble(chunk.getMaxValue());
+                objectOut.writeInt(chunk.getSignificanceBitSize());
+                byte[] bytes = chunk.getCompressedBytes();
+                objectOut.writeInt(bytes.length);
+                objectOut.write(bytes);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+
 
 
 

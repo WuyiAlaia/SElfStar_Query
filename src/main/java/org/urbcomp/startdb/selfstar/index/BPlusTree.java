@@ -1,19 +1,24 @@
-package org.urbcomp.startdb.selfstar.decompressor.query;
+package org.urbcomp.startdb.selfstar.index;
 
+import java.io.*;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
+import org.urbcomp.startdb.selfstar.query.CompressedChunk;
 
-public class BPlusTree<K extends Comparable<K>, V> {
+public class BPlusTree<K extends Comparable<K>, V extends Serializable> {
     private BPlusTreeNode<K, V> root;
     private int degree;
+    private RandomAccessFile storageFile;
+    private int chunkSize;
 
-    public BPlusTree(int degree) {
+    public BPlusTree(int degree, String storageFilePath, int chunkSize) throws IOException {
         this.root = new BPlusTreeNode<>(true);
         this.degree = degree;
+        this.storageFile = new RandomAccessFile(storageFilePath, "rw");
+        this.chunkSize = chunkSize;
     }
 
-    public void insert(K key, V value) {
+    public void insert(K key, V value) throws IOException {
         BPlusTreeNode<K, V> r = this.root;
         if (r.keys.size() == (2 * degree - 1)) {
             BPlusTreeNode<K, V> s = new BPlusTreeNode<>(false);
@@ -26,7 +31,7 @@ public class BPlusTree<K extends Comparable<K>, V> {
         }
     }
 
-    private void insertNonFull(BPlusTreeNode<K, V> x, K key, V value) {
+    private void insertNonFull(BPlusTreeNode<K, V> x, K key, V value) throws IOException {
         int i = x.keys.size() - 1;
         if (x.isLeaf) {
             x.keys.add(null);
@@ -37,7 +42,8 @@ public class BPlusTree<K extends Comparable<K>, V> {
                 i--;
             }
             x.keys.set(i + 1, key);
-            x.values.set(i + 1, value);
+            long offset = storeValue(value);
+            x.values.set(i + 1, offset);
         } else {
             while (i >= 0 && key.compareTo(x.keys.get(i)) < 0) {
                 i--;
@@ -74,29 +80,48 @@ public class BPlusTree<K extends Comparable<K>, V> {
         }
     }
 
-    public V search(K key) {
+    public V search(K key) throws IOException, ClassNotFoundException {
         return search(this.root, key);
     }
 
-    private V search(BPlusTreeNode<K, V> x, K key) {
+    private V search(BPlusTreeNode<K, V> x, K key) throws IOException, ClassNotFoundException {
         int i = 0;
         while (i < x.keys.size() && key.compareTo(x.keys.get(i)) > 0) {
             i++;
         }
         if (i < x.keys.size() && key.compareTo(x.keys.get(i)) == 0) {
-            return x.values.get(i);
+            if (x.isLeaf) {
+                return loadValue(x.values.get(i));
+            } else {
+                return search(x.children.get(i + 1), key);
+            }
         } else if (x.isLeaf) {
             return null;
         } else {
             return search(x.children.get(i), key);
         }
     }
+
+    private long storeValue(V value) throws IOException {
+        long offset = storageFile.length();
+        storageFile.seek(offset);
+        byte[] bytes = ((CompressedChunk) value).toBytes();
+        storageFile.write(bytes);
+        return offset;
+    }
+
+    private V loadValue(long offset) throws IOException, ClassNotFoundException {
+        byte[] bytes = new byte[chunkSize];
+        storageFile.seek(offset);
+        storageFile.read(bytes);
+        return (V) CompressedChunk.fromBytes(bytes);
+    }
 }
 
 class BPlusTreeNode<K extends Comparable<K>, V> {
     boolean isLeaf;
     List<K> keys;
-    List<V> values;
+    List<Long> values;  // Store file offsets for leaf node values
     List<BPlusTreeNode<K, V>> children;
 
     BPlusTreeNode(boolean isLeaf) {

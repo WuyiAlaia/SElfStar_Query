@@ -1,5 +1,9 @@
 package org.urbcomp.startdb.selfstar.query;
 
+
+import java.io.*;
+import java.util.List;
+
 public class CompressedChunk {
     private int iData;
     private int dataNum;
@@ -7,6 +11,7 @@ public class CompressedChunk {
     private double maxValue;
     private int significanceBitSize;
     private byte[] compressedBytes;
+
 
     public CompressedChunk() {
         this.maxValue = Double.MIN_VALUE;
@@ -26,7 +31,7 @@ public class CompressedChunk {
     }
 
 
-    public void setBytes(byte[] cBytes, int significanceBitSize){
+    public void setBytes(byte[] cBytes, int significanceBitSize) {
         int byteCount = significanceBitSize / 8; // Number of full bytes to copy
         int bitCount = significanceBitSize % 8;  // Remaining bits to copy
         // Copy full bytes
@@ -38,6 +43,7 @@ public class CompressedChunk {
             this.compressedBytes[byteCount] = (byte) (cBytes[byteCount] & mask); // Copy remaining bits
         }
     }
+
 
     public int getIData() {
         return iData;
@@ -61,5 +67,45 @@ public class CompressedChunk {
 
     public byte[] getCompressedBytes() {
         return compressedBytes;
+    }
+
+    public static CompressedChunk fromBytes(byte[] bytes) {
+        // Implement deserialization from bytes
+        ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
+        try (ObjectInputStream ois = new ObjectInputStream(bis)) {
+            return (CompressedChunk) ois.readObject();
+        } catch (IOException | ClassNotFoundException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    public byte[] toBytes() {
+        // Implement serialization to bytes
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        try (ObjectOutputStream oos = new ObjectOutputStream(bos)) {
+            oos.writeObject(this);
+            oos.flush();
+            return bos.toByteArray();
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    public void writeChunkToFile(CompressedChunk chunk, String filename) {
+        try (FileOutputStream fileOut = new FileOutputStream(filename);
+            ObjectOutputStream objectOut = new ObjectOutputStream(fileOut)) {
+            objectOut.writeInt(chunk.getIData());
+            objectOut.writeInt(chunk.getDataNum());
+            objectOut.writeDouble(chunk.getMinValue());
+            objectOut.writeDouble(chunk.getMaxValue());
+            objectOut.writeInt(chunk.getSignificanceBitSize());
+            byte[] bytes = chunk.getCompressedBytes();
+            objectOut.writeInt(bytes.length);
+            objectOut.write(bytes);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
