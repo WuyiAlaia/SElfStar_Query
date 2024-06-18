@@ -68,6 +68,7 @@ public class SElfStarCompressor implements ICompressor {
     }
 
     public byte[] getBytes() {
+
         int byteCount = (int) Math.ceil(compressedSizeInBits / 8.0);
         return Arrays.copyOf(xorCompressor.getOut(), byteCount);
     }

@@ -68,4 +68,25 @@ public class BlockReader implements Closeable {
     public void close() throws IOException {
         br.close();
     }
+
+    public static List<Double> readCSV(String filePath) {
+        List<Double> values = new ArrayList<>();
+        String line;
+
+        try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
+            while ((line = br.readLine()) != null) {
+                try {
+                    double value = Double.parseDouble(line);
+                    values.add(value);
+                } catch (NumberFormatException e) {
+                    // Handle the case where the line is not a valid double
+                    System.err.println("Invalid number format in line: " + line);
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return values;
+    }
 }

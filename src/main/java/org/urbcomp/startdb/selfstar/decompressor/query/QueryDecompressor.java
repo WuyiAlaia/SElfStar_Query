@@ -1,58 +1,42 @@
 package org.urbcomp.startdb.selfstar.decompressor.query;
 
 import org.urbcomp.startdb.selfstar.decompressor.IDecompressor;
-import org.urbcomp.startdb.selfstar.query.CompressedBlock;
-import org.urbcomp.startdb.selfstar.query.CompressedChunk;
+import org.urbcomp.startdb.selfstar.query.MetaData;
+
+import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
 
 
-public class QueryDecompressor implements IQueryDecompressor {
+public class QueryDecompressor {
     private final IDecompressor decompressor;
-    private final CompressedBlock block = new CompressedBlock();
+
     private List<Double> minValuesInBlocks = null;
     private List<Double> maxValuesInBlocks = null;
-    private CompressedChunk compressedChunk = null;
+
+    private final List<byte[]> chunkList = new ArrayList<>();
+    private final List<MetaData> metaDataList = new ArrayList<>();
+
+    private final ThreadPoolExecutor globalThreadPool = new ThreadPoolExecutor(6, 12, 10, java.util.concurrent.TimeUnit.SECONDS, new LinkedBlockingQueue<>());
 
     public QueryDecompressor(IDecompressor decompressor) {
         this.decompressor = decompressor;
         // this.blockFiles = blockFiles;
     }
-    @Override
-    public double decompress(CompressedChunk compressedChunk, int index) {
-        double value = Double.NaN;
-        decompressor.refresh();
-        decompressor.setBytes(compressedChunk.getCompressedBytes());
-        while (index > 0) {
-            value = decompressor.nextValue();
-            index--;
-        }
-        return value;
-    }
-    @Override
-    public List<Double> decompress(CompressedChunk compressedChunk, int start, int end) {
-        List<Double> values = new ArrayList<>(end - start);
-        decompressor.refresh();
-        decompressor.setBytes(compressedChunk.getCompressedBytes());
-        int index = 0;
-        while (index < start) {
-            decompressor.nextValue();
-            index++;
-        }
-        while (index < end) {
-            values.add(decompressor.nextValue());
-            index++;
-        }
-        return values;
-    }
 
-    @Override
-    public List<Double> decompress(CompressedChunk compressedChunk) {
-        List<Double> values = new ArrayList<>(compressedChunk.getDataNum());
+    public List<Double> decompress(byte[] chunk, int count) {
+        List<Double> values = new ArrayList<>();
         decompressor.refresh();
-        decompressor.setBytes(compressedChunk.getCompressedBytes());
-        for (int i = 0; i < compressedChunk.getDataNum(); i++) {
-            values.add(decompressor.nextValue());
+        decompressor.setBytes(chunk);
+        double bufferValue;
+        while (count-- > 0) {
+            bufferValue = decompressor.nextValue();
+            values.add(bufferValue);
         }
         return values;
     }
@@ -61,6 +45,61 @@ public class QueryDecompressor implements IQueryDecompressor {
         decompressor.setBytes(bs);
     }
 
+    public List<MetaData> getMetaDataList() {
+        return metaDataList;
+    }
+
+    public List<byte[]> getChunkList() {
+        return chunkList;
+    }
+
+    public void loadFromFiles(String id) {
+        try {
+            ObjectInputStream metaDataInputStream = new ObjectInputStream(Files.newInputStream(new File(id + "_meta.dat").toPath()));
+            int len = metaDataInputStream.readInt();
+            for (int j = 0; j < len; j++) {
+                metaDataList.add((MetaData) metaDataInputStream.readObject());
+            }
+            metaDataInputStream.close();
+        } catch (IOException | ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+        metaDataList.sort(Comparator.comparingInt(MetaData::getFirstValueIndex));
+        for (int i = 0; i < metaDataList.size(); i++) {
+            try {
+                byte[] chunk = Files.readAllBytes(Paths.get(id + "_" + i + ".dat"));
+                chunkList.add(chunk);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public void refresh() {
+        decompressor.refresh();
+    }
+
+    class ChunkLoadTask implements Runnable {
+        private final List<byte[]> chunks;
+        private final String id;
+        private final int index;
+
+        public ChunkLoadTask(List<byte[]> chunks, String id, int index) {
+            this.chunks = chunks;
+            this.id = id;
+            this.index = index;
+        }
+
+        @Override
+        public void run() {
+            try {
+                byte[] chunk = Files.readAllBytes(Paths.get(id + "_" + index + ".dat"));
+                chunks.set(index, chunk);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
 
 //    public Double randomQuery(int dataIndex){
 //        int blockFileIndex = randomQueryFindBlockFile(dataIndex);
@@ -333,10 +372,4 @@ public class QueryDecompressor implements IQueryDecompressor {
 //        }
 //        return values;
 //    }
-
-
-    public void refresh() {
-        decompressor.refresh();
-        block.refresh();
-    }
 }

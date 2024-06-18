@@ -33,7 +33,7 @@ public class BPlusTreeQueryCompressor implements IQueryCompressor{
         // writeFilesToFile(blockFilesTree,fileName);
     }
 
-    public void compressionChunk(){
+    public void compressionChunk() {
         int currentDataIndex = 0;
         long currentBitSize;
         double maxValue = Integer.MIN_VALUE;
