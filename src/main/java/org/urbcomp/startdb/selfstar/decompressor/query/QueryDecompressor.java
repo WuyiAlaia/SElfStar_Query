@@ -4,11 +4,10 @@ import org.urbcomp.startdb.selfstar.decompressor.IDecompressor;
 import org.urbcomp.startdb.selfstar.query.MetaData;
 
 import java.io.*;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 
@@ -19,7 +18,7 @@ public class QueryDecompressor {
     private List<Double> minValuesInBlocks = null;
     private List<Double> maxValuesInBlocks = null;
 
-    private final List<byte[]> chunkList = new ArrayList<>();
+    private final Map<Integer, ByteBuffer> chunkMap = new HashMap<>();
     private final List<MetaData> metaDataList = new ArrayList<>();
 
     private final ThreadPoolExecutor globalThreadPool = new ThreadPoolExecutor(6, 12, 10, java.util.concurrent.TimeUnit.SECONDS, new LinkedBlockingQueue<>());
@@ -49,11 +48,15 @@ public class QueryDecompressor {
         return metaDataList;
     }
 
-    public List<byte[]> getChunkList() {
-        return chunkList;
+    public Map<Integer, ByteBuffer> getChunkMap() {
+        return chunkMap;
     }
 
-    public void loadFromFiles(String id) {
+    /***
+     * load meta data from file
+     * @param id    数据集名字
+     */
+    public void loadMetaData(String id) {
         try {
             ObjectInputStream metaDataInputStream = new ObjectInputStream(Files.newInputStream(new File(id + "_meta.dat").toPath()));
             int len = metaDataInputStream.readInt();
@@ -65,13 +68,29 @@ public class QueryDecompressor {
             throw new RuntimeException(e);
         }
         metaDataList.sort(Comparator.comparingInt(MetaData::getFirstValueIndex));
+    }
+
+    /***
+     * load chunk from file
+     * @param id    数据集名字
+     * @param index 第几个块
+     */
+    public void loadChunk(String id, int index) {
+        try {
+            byte[] chunk = Files.readAllBytes(Paths.get(id + "_" + index + ".dat"));
+            chunkMap.put(index, ByteBuffer.wrap(chunk));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /***
+     * load all chunks from file
+     * @param id    数据集名字
+     */
+    public void loadAllChunks(String id) {
         for (int i = 0; i < metaDataList.size(); i++) {
-            try {
-                byte[] chunk = Files.readAllBytes(Paths.get(id + "_" + i + ".dat"));
-                chunkList.add(chunk);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+           loadChunk(id, i);
         }
     }
 

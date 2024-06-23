@@ -39,11 +39,12 @@ public class TestQuery {
 //            "Blockchain-tr.csv",
 //            "City-lat.csv",
 //            "City-lon.csv",
-            "Food-price.csv",
+//            "Food-price.csv",
 //            "POI-lat.csv",
 //            "POI-lon.csv",
 ////            "SSD-bench.csv",
-//            "electric_vehicle_charging.csv"
+            "electric_vehicle_charging.csv"
+//    "test.csv"
     };
 
     @Test
@@ -63,7 +64,9 @@ public class TestQuery {
         for (int start = 0; start < floatings.size(); ++start) {
             double trueResult = floatings.get(start);
             for (int end = start; end < floatings.size(); ++end) {
-                trueResult = Math.max(trueResult, floatings.get(end));
+                for(int i=start; i<=end; i++){
+                    trueResult = Math.max(trueResult, floatings.get(i));
+                }
                 double ourResult = queryProcess.max(fileName, start, end);
 //                double trueResult = maxDouble(floatings, start, end);
                 if (ourResult != trueResult) {
