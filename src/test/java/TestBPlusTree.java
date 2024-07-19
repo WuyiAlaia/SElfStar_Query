@@ -1,6 +1,6 @@
 import org.junit.jupiter.api.Test;
 import org.urbcomp.startdb.selfstar.compressor.ICompressor;
-import org.urbcomp.startdb.selfstar.compressor.SElfStarCompressor;
+import org.urbcomp.startdb.selfstar.compressor.SElfStarChunkCompressor;
 import org.urbcomp.startdb.selfstar.compressor.xor.SElfXORCompressor;
 import org.urbcomp.startdb.selfstar.decompressor.ElfStarDecompressor;
 import org.urbcomp.startdb.selfstar.decompressor.IDecompressor;
@@ -52,7 +52,7 @@ public class TestBPlusTree {
         List<Double> floatingsReadFromFile = readfile(filename);
         queryIndex = random.nextInt(floatingsReadFromFile.size());
         //Baseline
-        ICompressor compressor = new SElfStarCompressor(new SElfXORCompressor());
+        ICompressor compressor = new SElfStarChunkCompressor(new SElfXORCompressor());
         IDecompressor decompressor = new ElfStarDecompressor(new SElfStarXORDecompressor());
         File fileForBaseline = createFiles("SElfCompressor",filename);
         int timesOfWrite = 0;

@@ -1,24 +1,24 @@
-package org.urbcomp.startdb.selfstar.decompressor32;
+package org.urbcomp.startdb.selfstar.decompressor;
 
-import org.urbcomp.startdb.selfstar.decompressor32.xor.IXORDecompressor32;
-import org.urbcomp.startdb.selfstar.utils.Elf32Utils;
+import org.urbcomp.startdb.selfstar.decompressor.xor.IXORDecompressor;
+import org.urbcomp.startdb.selfstar.utils.Elf64Utils;
 import org.urbcomp.startdb.selfstar.utils.InputBitStream;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ElfPlusDecompressor32 implements IDecompressor32 {
-    private final IXORDecompressor32 xorDecompressor;
+public class SElfStarDecompressorChunk implements IDecompressor {
+    private final IXORDecompressor xorDecompressor;
     private int lastBetaStar = Integer.MAX_VALUE;
 
-    public ElfPlusDecompressor32(IXORDecompressor32 xorDecompressor) {
+    public SElfStarDecompressorChunk(IXORDecompressor xorDecompressor) {
         this.xorDecompressor = xorDecompressor;
     }
 
-    public List<Float> decompress() {
-        List<Float> values = new ArrayList<>(1024);
-        Float value;
+    public List<Double> decompress() {
+        List<Double> values = new ArrayList<>(1024);
+        Double value;
         while ((value = nextValue()) != null) {
             values.add(value);
         }
@@ -37,32 +37,32 @@ public class ElfPlusDecompressor32 implements IDecompressor32 {
     }
 
     @Override
-    public Float nextValue() {
-        Float v;
+    public Double nextValue() {
+        Double v;
 
         if (readInt(1) == 0) {
             v = recoverVByBetaStar();               // case 0
         } else if (readInt(1) == 0) {
             v = xorDecompressor.readValue();        // case 10
         } else {
-            lastBetaStar = readInt(3);          // case 11
+            lastBetaStar = readInt(4);          // case 11
             v = recoverVByBetaStar();
         }
         return v;
     }
 
-    private Float recoverVByBetaStar() {
-        float v;
-        Float vPrime = xorDecompressor.readValue();
-        int sp = Elf32Utils.getSP(vPrime < 0 ? -vPrime : vPrime);
+    private Double recoverVByBetaStar() {
+        double v;
+        Double vPrime = xorDecompressor.readValue();
+        int sp = Elf64Utils.getSP(vPrime < 0 ? -vPrime : vPrime);
         if (lastBetaStar == 0) {
-            v = Elf32Utils.get10iN(-sp - 1);
+            v = Elf64Utils.get10iN(-sp - 1);
             if (vPrime < 0) {
                 v = -v;
             }
         } else {
             int alpha = lastBetaStar - sp - 1;
-            v = Elf32Utils.roundUp(vPrime, alpha);
+            v = Elf64Utils.roundUp(vPrime, alpha);
         }
         return v;
     }

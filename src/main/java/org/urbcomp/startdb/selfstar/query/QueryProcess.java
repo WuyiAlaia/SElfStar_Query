@@ -1,6 +1,6 @@
 package org.urbcomp.startdb.selfstar.query;
 
-import org.urbcomp.startdb.selfstar.decompressor.SElfStarDecompressor;
+import org.urbcomp.startdb.selfstar.decompressor.SElfStarDecompressorChunk;
 import org.urbcomp.startdb.selfstar.decompressor.query.QueryDecompressor;
 import org.urbcomp.startdb.selfstar.decompressor.xor.SElfStarXORDecompressor;
 
@@ -11,7 +11,7 @@ import java.util.Map;
 public class QueryProcess {
 
     public double max(String id, int start, int end) {
-        QueryDecompressor decompressor = new QueryDecompressor(new SElfStarDecompressor(new SElfStarXORDecompressor()));
+        QueryDecompressor decompressor = new QueryDecompressor(new SElfStarDecompressorChunk(new SElfStarXORDecompressor()));
         decompressor.loadMetaData(id);
         List<MetaData> metaDataList = decompressor.getMetaDataList();
         double maxValue = Double.NEGATIVE_INFINITY;
@@ -66,7 +66,7 @@ public class QueryProcess {
     }
 
     public double min(String id, int start, int end) {
-        QueryDecompressor decompressor = new QueryDecompressor(new SElfStarDecompressor(new SElfStarXORDecompressor()));
+        QueryDecompressor decompressor = new QueryDecompressor(new SElfStarDecompressorChunk(new SElfStarXORDecompressor()));
         decompressor.loadMetaData(id);
         List<MetaData> metaDataList = decompressor.getMetaDataList();
         double minValue = Double.MAX_VALUE;
@@ -116,7 +116,7 @@ public class QueryProcess {
     }
 
     public double sum(String id, int start, int end) {
-        QueryDecompressor decompressor = new QueryDecompressor(new SElfStarDecompressor(new SElfStarXORDecompressor()));
+        QueryDecompressor decompressor = new QueryDecompressor(new SElfStarDecompressorChunk(new SElfStarXORDecompressor()));
         decompressor.loadMetaData(id);
         List<MetaData> metaDataList = decompressor.getMetaDataList();
         double sumValue = 0;
@@ -165,7 +165,7 @@ public class QueryProcess {
     }
 
     public boolean exist(String id, double value) {
-        QueryDecompressor decompressor = new QueryDecompressor(new SElfStarDecompressor(new SElfStarXORDecompressor()));
+        QueryDecompressor decompressor = new QueryDecompressor(new SElfStarDecompressorChunk(new SElfStarXORDecompressor()));
         decompressor.loadMetaData(id);
         return false;
     }

@@ -121,6 +121,7 @@ public class SElfXORCompressor implements IXORCompressor {
         return thisSize;
     }
 
+    @Override
     public void update() {
         // we update distribution using the inner info
         leadPositions = PostOfficeSolver.initRoundAndRepresentation(leadDistribution, leadingRepresentation, leadingRound);
@@ -190,7 +191,6 @@ public class SElfXORCompressor implements IXORCompressor {
 
     @Override
     public void refresh() {
-        update();
         out = new OutputBitStream(
                 new byte[(int) (((capacity + 1) * 8 + capacity / 8 + 1) * 1.2)]);
         first = true;

@@ -20,4 +20,7 @@ public interface IXORCompressor {
 
     default void setDistribution(int[] leadDistribution, int[] trailDistribution) {
     }
+
+    default void update(){
+    }
 }

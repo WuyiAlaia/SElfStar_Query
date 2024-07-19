@@ -1,15 +1,9 @@
 import org.junit.jupiter.api.Test;
-import org.urbcomp.startdb.selfstar.compressor.SElfStarCompressor;
+import org.urbcomp.startdb.selfstar.compressor.SElfStarChunkCompressor;
 import org.urbcomp.startdb.selfstar.compressor.query.QueryCompressor;
 import org.urbcomp.startdb.selfstar.compressor.xor.SElfXORCompressor;
-import org.urbcomp.startdb.selfstar.decompressor.SElfStarDecompressor;
-import org.urbcomp.startdb.selfstar.decompressor.query.QueryDecompressor;
-import org.urbcomp.startdb.selfstar.decompressor.xor.SElfStarXORDecompressor;
 import org.urbcomp.startdb.selfstar.query.QueryProcess;
 
-import java.util.AbstractList;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -56,7 +50,7 @@ public class TestQuery {
 
     public void testQuery(String fileName, int ChunkSize) {
         List<Double> floatings = BlockReader.readCSV(fileName);
-        QueryCompressor qc = new QueryCompressor(new SElfStarCompressor(new SElfXORCompressor()), ChunkSize);
+        QueryCompressor qc = new QueryCompressor(new SElfStarChunkCompressor(new SElfXORCompressor()), ChunkSize);
         qc.compressAll(floatings);
         qc.saveToFile(fileName);
         QueryProcess queryProcess = new QueryProcess();
@@ -87,7 +81,7 @@ public class TestQuery {
 
     public void compressAndSave(String fileName, int ChunkSize) {
         List<Double> floatings = BlockReader.readCSV(fileName);
-        QueryCompressor compressor = new QueryCompressor(new SElfStarCompressor(new SElfXORCompressor()), ChunkSize);
+        QueryCompressor compressor = new QueryCompressor(new SElfStarChunkCompressor(new SElfXORCompressor()), ChunkSize);
         compressor.compressAll(floatings);
         compressor.saveToFile(fileName);
     }
